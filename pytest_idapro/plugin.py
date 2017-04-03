@@ -20,6 +20,9 @@ modules_list = ['ida_allins', 'ida_area', 'ida_auto', 'ida_bytes', 'ida_dbg',
 modules_list.extend(['idaapi', 'idc', 'idautils'])
 
 
+idapro_plugin_entries = []
+
+
 def pytest_configure(config):
     del config
     for module_name in modules_list:
@@ -44,3 +47,24 @@ def ida_app():
     t = threading.Thread(target=qapp.exec_)
     t.start()
     yield qapp
+
+
+class IDAProPluginEntryScanner(pytest.Module):
+    def istestfunction(self, obj, name):
+        if not name == "PLUGIN_ENTRY":
+            return
+
+        idapro_plugin_entries.append(obj)
+
+
+def pytest_collect_file(path, parent):
+    if not path.ext == '.py':
+        return
+
+    scanner = IDAProPluginEntryScanner(path, parent)
+    canner.collect()
+
+
+def pytest_generate_tests(metafunc):
+    if 'idapro_plugin_entry' in metafunc.fixturenames:
+        metafunc.parametrize('idapro_plugin_entry', idapro_plugin_entries)
