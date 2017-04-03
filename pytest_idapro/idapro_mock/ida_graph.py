@@ -1,0 +1,2 @@
+class GraphViewer(object):
+    pass
