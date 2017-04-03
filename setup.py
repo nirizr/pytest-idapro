@@ -1,12 +1,12 @@
 #!/usr/bin/python
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 from pytest_idapro import __version__
 
 setup(
     name='pytest-idapro',
-    packages=['pytest_idapro'],
+    packages=find_packages(),
     version=__version__,
     description=('A pytest plugin that mocks idapython modules to perform'
                  'tests outside of IDA in an automated manner.'),
