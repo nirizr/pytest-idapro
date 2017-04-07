@@ -1,2 +1,5 @@
-class GraphViewer(object):
+from .mock import MockObject
+
+
+class GraphViewer(MockObject):
     pass
