@@ -14,6 +14,7 @@ modules_list = ['ida_allins', 'ida_area', 'ida_auto', 'ida_bytes', 'ida_dbg',
                 'ida_struct', 'ida_typeinf', 'ida_ua', 'ida_xref']
 modules_list.extend(['idaapi', 'idc', 'idautils'])
 
+
 def pytest_configure(config):
     del config
     for module_name in modules_list:

@@ -1,3 +1,5 @@
+from .mock import MockObject
+
 
 # Plugin constants
 PLUGIN_MOD  = 0x0001
@@ -12,5 +14,6 @@ PLUGIN_SKIP = 0
 PLUGIN_OK   = 1
 PLUGIN_KEEP = 2
 
-class plugin_t(object):
+
+class plugin_t(MockObject):
     pass
