@@ -2,6 +2,11 @@ import sys
 import importlib
 from . import idapro_mock
 
+from PyQt5 import QtWidgets
+import pytest
+
+import threading
+
 
 modules_list = ['ida_allins', 'ida_area', 'ida_auto', 'ida_bytes', 'ida_dbg',
                 'ida_diskio', 'ida_entry', 'ida_enum', 'ida_expr', 'ida_fixup',
@@ -25,3 +30,16 @@ def pytest_unconfigure(config):
     del config
     for module in modules_list:
         del sys.modules[module]
+
+
+@pytest.fixture(scope='session')
+def ida_app():
+    qapp = QtWidgets.QApplication([])
+    qmainwin = QtWidgets.QMainWindow()
+    qmdiarea = QtWidgets.QMdiArea()
+    qmainwin.setCentralWidget(qmdiarea)
+    qmenu = QtWidgets.QMenu()
+    qmainwin.setMenuWidget(qmenu)
+    t = threading.Thread(target=qapp.exec_)
+    t.start()
+    yield qapp
