@@ -1,8 +1,11 @@
 #!/usr/bin/python
 
 from setuptools import setup, find_packages
+import re
 
-from pytest_idapro import __version__
+__version__ = re.search(
+    r'__version__\s*=\s*[\'"]([^\'"]*)[\'"]',  # It excludes inline comment too
+    open('pytest_idapro/__init__.py').read()).group(1)
 
 setup(
     name='pytest-idapro',
