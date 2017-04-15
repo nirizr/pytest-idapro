@@ -1,9 +1,7 @@
 from . import idaapi
 
-
 from . import idc
 from . import idautils
-
 
 from . import ida_allins
 from . import ida_area
