@@ -37,7 +37,7 @@ def pytest_unconfigure(config):
 
 
 @pytest.fixture(scope='session')
-def ida_app():
+def idapro_app():
     qapp = QtWidgets.QApplication([])
     qmainwin = QtWidgets.QMainWindow()
     qmdiarea = QtWidgets.QMdiArea()
