@@ -11,20 +11,20 @@ class action_handler_t(MockObject):
 
 
 class action_desc_t(MockObject):
-  pass
+    pass
 
 
 class py_load_custom_icon_fn(MockObject):
-  pass
+    pass
 
 
 class register_action(MockObject):
-  pass
+    pass
 
 
 class attach_action_to_menu(MockObject):
-  pass
+    pass
 
 
 class attach_action_to_toolbar(MockObject):
-  pass
+    pass
