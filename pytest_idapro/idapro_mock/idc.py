@@ -1,2 +1,2 @@
 def GetIdaDirectory():
-  return "./"
+    return "./"
