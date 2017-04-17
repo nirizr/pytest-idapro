@@ -6,6 +6,20 @@ SETMENU_INS = 0  # add menu item before the specified path (default)
 SETMENU_APP = 1  # add menu item after the specified path
 
 
+# Values returned by action_handler_t's update method to control action's
+# availability. ENABLE means action controllers are enabled and available,
+# DISABLE means they're unavailable. rest of the enum controlls when to query
+# again for availability change by calling update.
+AST_ENABLE_ALWAYS = 0
+AST_ENABLE_FOR_IDB = 1
+AST_ENABLE_FOR_FORM = 2
+AST_ENABLE = 3
+AST_DISABLE_ALWAYS = 4
+AST_DISABLE_FOR_IDB = 5
+AST_DISABLE_FOR_FORM = 6
+AST_DISABLE = 7
+
+
 class action_handler_t(MockObject):
     pass
 
