@@ -1,11 +1,12 @@
 import sys
 import importlib
+import inspect
+import threading
+
 from . import idapro_mock
 
 from PyQt5 import QtWidgets
 import pytest
-
-import threading
 
 
 modules_list = ['ida_allins', 'ida_area', 'ida_auto', 'ida_bytes', 'ida_dbg',
@@ -21,6 +22,7 @@ modules_list.extend(['idaapi', 'idc', 'idautils'])
 
 
 idapro_plugin_entries = []
+idapro_action_entries = []
 
 
 def pytest_configure(config):
@@ -49,22 +51,27 @@ def idapro_app():
     yield qapp
 
 
-class IDAProPluginEntryScanner(pytest.Module):
+class IDAProEntriesScanner(pytest.Module):
     def istestfunction(self, obj, name):
-        if not name == "PLUGIN_ENTRY":
-            return
+        if name == "PLUGIN_ENTRY":
+            idapro_plugin_entries.append(obj)
 
-        idapro_plugin_entries.append(obj)
+    def istestclass(self, obj, name):
+        if any(cls.__name__ == 'action_handler_t'
+                  for cls in inspect.getmro(obj)):
+            idapro_action_entries.append(obj)
 
 
 def pytest_collect_file(path, parent):
     if not path.ext == '.py':
         return
 
-    scanner = IDAProPluginEntryScanner(path, parent)
+    scanner = IDAProEntriesScanner(path, parent)
     scanner.collect()
 
 
 def pytest_generate_tests(metafunc):
     if 'idapro_plugin_entry' in metafunc.fixturenames:
         metafunc.parametrize('idapro_plugin_entry', idapro_plugin_entries)
+    if 'idapro_action_entry' in  metafunc.fixturenames:
+        metafunc.parametrize('idapro_action_entry', idapro_action_entries)
