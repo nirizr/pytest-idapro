@@ -58,7 +58,7 @@ class IDAProEntriesScanner(pytest.Module):
 
     def istestclass(self, obj, name):
         if any(cls.__name__ == 'action_handler_t'
-                  for cls in inspect.getmro(obj)):
+               for cls in inspect.getmro(obj)):
             idapro_action_entries.append(obj)
 
 
@@ -73,5 +73,5 @@ def pytest_collect_file(path, parent):
 def pytest_generate_tests(metafunc):
     if 'idapro_plugin_entry' in metafunc.fixturenames:
         metafunc.parametrize('idapro_plugin_entry', idapro_plugin_entries)
-    if 'idapro_action_entry' in  metafunc.fixturenames:
+    if 'idapro_action_entry' in metafunc.fixturenames:
         metafunc.parametrize('idapro_action_entry', idapro_action_entries)
