@@ -15,5 +15,8 @@ PLUGIN_OK = 1
 PLUGIN_KEEP = 2
 
 
+BADADDR = 0xFFFFFFFF
+
+
 class plugin_t(MockObject):
     pass
