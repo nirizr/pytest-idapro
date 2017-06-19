@@ -8,6 +8,7 @@
 # For detailed copyright information see the file COPYING in
 # the root of the distribution archive.
 #---------------------------------------------------------------------
+# flake8: noqa
 """
 idautils.py - High level utility functions for IDA
 """
