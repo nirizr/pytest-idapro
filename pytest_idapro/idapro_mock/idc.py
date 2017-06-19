@@ -1,5 +1,14 @@
+import tempfile
+
+
+tempidadir = None
+
+
 def GetIdaDirectory():
-    return "./"
+    global tempidadir
+    if not tempidadir:
+        tempidadir = tempfile.mkdtemp("idadir")
+    return tempidadir
 
 
 def GetIdbPath():

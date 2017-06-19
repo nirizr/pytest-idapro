@@ -37,6 +37,11 @@ def pytest_unconfigure(config):
     for module in modules_list:
         del sys.modules[module]
 
+    if idapro_mock.idc.tempidadir:
+        import shutil
+        shutil.rmtree(idapro_mock.idc.tempidadir)
+        idapro_mock.idc.tempidadir = None
+
 
 @pytest.fixture(scope='session')
 def idapro_app():
