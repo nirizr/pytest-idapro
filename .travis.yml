@@ -8,7 +8,8 @@ branches:
     - master
 
 install:
-  - if [ -f requirements.txt ]; then pip install -r requirements.txt ; fi
   - pip install flake8
 
-script: flake8 ./pytest_idapro --show-source --statistics
+script:
+  - flake8 ./pytest_idapro --show-source --statistics
+  - pip install -e .
