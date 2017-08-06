@@ -18,7 +18,7 @@ setup(
     maintainer='Nir Izraeli',
     maintainer_email='nirizr@gmail.com',
     keywords=['testing', 'pytest', 'idapython', 'idapro'],
-    install_requires=['pytest>=2.7'],
+    install_requires=['pytest>=2.7', 'pytest-qt', 'pytest-xvfb'],
     url='https://github.com/nirizr/pytest-idapro',
     classifiers=[
         'Intended Audience :: Developers',
