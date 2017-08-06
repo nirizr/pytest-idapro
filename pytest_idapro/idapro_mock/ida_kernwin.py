@@ -42,3 +42,24 @@ class attach_action_to_menu(MockObject):
 
 class attach_action_to_toolbar(MockObject):
     pass
+
+
+# Values used to configure specifics of the execute_sync API function, used to
+# en-queue python callables into the execution queue of IDA's main thread.
+# Since IDA is not thread-safe, it is unsupported to call certain kernel API
+# and specifically database function (or functions that may attempt to interact
+# with the database) from any thread except the main thread.
+# We mock this functionality by directly calling callback function, without any
+# enforcement or validation of called functions (and whether they manipulate
+# the database). This might be a future improvement.
+MFF_FAST = 0
+MFF_READ = 1
+MFF_WRITE = 2
+MFF_NOWAIT = 4
+
+
+def execute_sync(callback, reqf):
+    r = callback()
+    if reqf & MFF_NOWAIT:
+        return r
+    return None
