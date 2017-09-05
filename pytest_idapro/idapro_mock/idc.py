@@ -12,4 +12,12 @@ def GetIdaDirectory():
 
 
 def GetIdbPath():
-    return "./file.idb"
+    return "./fake-idb-file.idb"
+
+
+def GetInputFile():
+    return "./fake-input-file.exe"
+
+
+def GetInputMD5():
+    return "\xff" * 32
