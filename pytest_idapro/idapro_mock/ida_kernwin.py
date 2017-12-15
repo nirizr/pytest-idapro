@@ -1,5 +1,7 @@
 from .mock import MockObject
 
+# TODO: support other pyqt libraries
+from PyQt5 import QtWidgets
 
 # Passed as 'flags' parameter to attach_action_to_menu()
 SETMENU_INS = 0  # add menu item before the specified path (default)
@@ -63,3 +65,16 @@ def execute_sync(callback, reqf):
     if reqf & MFF_NOWAIT:
         return r
     return None
+
+
+# PluginForm is a Dialog enhancement that allows dockable dialogs in IDA among
+# other improvements and interfaces IDA has with dialogs, including some for
+# backwards-compatability since when IDA did not provide an easy direct
+# interface with Qt
+class PluginForm(QtWidgets.QDialog, MockObject):
+    def OnCreate(self, form):
+        pass
+
+    def Show(self, title=""):
+        self.OnCreate()
+        QtWidgets.QDialog.show(self)
