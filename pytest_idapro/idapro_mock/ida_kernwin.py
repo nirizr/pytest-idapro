@@ -76,5 +76,6 @@ class PluginForm(QtWidgets.QDialog, MockObject):
         pass
 
     def Show(self, title=""):
-        self.OnCreate()
+        form = "__FORM_VALUE__"
+        self.OnCreate(form)
         QtWidgets.QDialog.show(self)
