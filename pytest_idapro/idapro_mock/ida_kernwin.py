@@ -71,11 +71,21 @@ def execute_sync(callback, reqf):
 # other improvements and interfaces IDA has with dialogs, including some for
 # backwards-compatability since when IDA did not provide an easy direct
 # interface with Qt
+FORM_VALUE = "##FORM_ID##"
+
+
 class PluginForm(QtWidgets.QDialog, MockObject):
     def OnCreate(self, form):
         pass
 
     def Show(self, title=""):
-        form = "__FORM_VALUE__"
-        self.OnCreate(form)
+        self.OnCreate(FORM_VALUE)
         QtWidgets.QDialog.show(self)
+
+    def FormToPyQtWidget(self, form):
+        assert form == FORM_VALUE
+
+        # Normally, PluginForm is not a QtDialog object and retrieveing the
+        # widget requires calling IDA API, however while mocking PluginForm, we
+        # made it a sinlge object, so that API returns it's self object
+        return self
