@@ -12,9 +12,8 @@
 """
 idautils.py - High level utility functions for IDA
 """
-import ida_funcs
-import ida_ida
-import ida_idp
+from . import ida_funcs
+from . import ida_ida
 
 
 def Functions(start=None, end=None):
