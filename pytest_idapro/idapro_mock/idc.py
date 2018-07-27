@@ -21,3 +21,6 @@ def GetInputFile():
 
 def GetInputMD5():
     return "\xff" * 32
+
+
+ARGV = ['./fake-script-file.py']
