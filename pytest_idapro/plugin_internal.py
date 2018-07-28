@@ -6,6 +6,7 @@ import subprocess
 
 import multiprocessing
 
+
 class InternalDeferredPlugin(object):
     def __init__(self, config):
         self.ida_path = config.getoption('--ida')
