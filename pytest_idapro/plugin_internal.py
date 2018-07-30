@@ -11,14 +11,14 @@ class InternalDeferredPlugin(object):
     def __init__(self, config):
         self.ida_path = config.getoption('--ida')
         self.ida_file = config.getoption('--ida-file')
-        self.recv, self.send = multiprocessing.Pipe()
+        self.remote_conn, self.conn = multiprocessing.Pipe()
 
     def pytest_runtestloop(self, session):
         internal_script = os.path.join(os.path.dirname(__file__),
                                        "idapro_internal",
                                        "idapro_internal.py")
 
-        script_args = '{} {}'.format(self.recv.fileno(), self.send.fileno())
+        script_args = '{}'.format(self.remote_conn.fileno())
         logfile = tempfile.NamedTemporaryFile(delete=False)
         args = [
             self.ida_path,
@@ -32,8 +32,10 @@ class InternalDeferredPlugin(object):
         ]
         print(args)
         proc = subprocess.Popen(args=args)
-        self.send.send("Hello IDA!")
-        self.send.send("Hello IDA!")
+        self.conn.send("ping")
+        self.conn.send("ping")
+        if self.conn.poll(2):
+            print(self.conn.recv())
         # TODO: actually handle responses from worker IDA process
         proc.wait()
         print(logfile.read())

@@ -6,10 +6,25 @@ except ImportError:  # python2
     from _multiprocessing import Connection
 
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
+log = logging.getLogger('pytest-idapro.worker')
+
+command_handlers = {}
+
+
+def command_handler(cmd):
+    command_prefix, command_name = cmd.__name__.split("_", 1)
+    assert command_prefix == "command"
+    command_handlers[command_name] = cmd
+    return cmd
+
+
 def handle_prerequisites():
-    # test pytest is installed, other-wise attempt installing
+    # test pytest is installed, otherwise attempt installing
     try:
         import pytest
+        del pytest
         return True
     except ImportError:
         pass
@@ -17,9 +32,9 @@ def handle_prerequisites():
     try:
         import pip
     except ImportError:
-        print("Both pytest and pip are missing from IDA environment, "
-              "execution inside IDA is impossible.")
-        raise
+        log.critical("Both pytest and pip are missing from IDA environment, "
+                     "execution inside IDA is impossible.")
+        return False
 
     # handle different versions of pip
     try:
@@ -34,20 +49,59 @@ def handle_prerequisites():
     if 'osx' == 'osx':
         pip_command += ['--upgrade', '--user', '--ignore-installed', 'six']
     pip_main(pip_command)
-    # TODO: OSX FIX: to get this working, add --user path to sys.path
+
+    try:
+        import pytest
+        del pytest
+    except ImportError:
+        log.exception("pytest module unavailable after installation attempt, "
+                      "cannot proceed.")
+        return False
+
+    return True
+
+
+@command_handler
+def command_ping(args):
+    return "pong"
+
+
+def handle_command(command_line):
+    command_args = command_line.split()
+    command = command_args.pop()
+
+    if command not in command_handlers:
+        raise RuntimeError("Unrecognized command recieved: "
+                           "'{}'".format(command))
+    log.debug("Recieved command: {}".format(command_line))
+    command_handler = command_handlers[command]
+    response = command_handler(command_args)
+    log.debug("Responding: {}".format(response))
+    return response
+
+
+def handle_communication(conn):
+    try:
+        while conn.poll(None):
+            command_line = conn.recv()
+            response = handle_command(command_line)
+            conn.send(response)
+    except RuntimeError:
+        log.exception("Runtime error encountered during message handling")
+    except EOFError:
+        log.info("remote connection closed, terminating.")
 
 
 def main():
-    handle_prerequisites()
+    if not handle_prerequisites():
+        return
 
-    recv = Connection(int(idc.ARGV[1]))
-    send = Connection(int(idc.ARGV[2]))
+    conn = Connection(int(idc.ARGV[1]))
 
-    for i in range(5):
-        if recv.poll(1):
-            r = recv.recv()
-            print("RECV: " + r)
+    handle_communication(conn)
 
 
 if __name__ == '__main__':
+    # TODO: wait until auto-analysis is done
     main()
+    # TODO: quit IDA
