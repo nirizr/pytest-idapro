@@ -5,19 +5,12 @@ try:  # python3
 except ImportError:  # python2
     from _multiprocessing import Connection
 
+import threading
+import platform
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger('pytest-idapro.internal.worker')
-
-command_handlers = {}
-
-
-def command_handler(cmd):
-    command_prefix, command_name = cmd.__name__.split("_", 1)
-    assert command_prefix == "command"
-    command_handlers[command_name] = cmd
-    return cmd
 
 
 def handle_prerequisites():
@@ -31,6 +24,7 @@ def handle_prerequisites():
 
     try:
         import pip
+        del pip
     except ImportError:
         log.critical("Both pytest and pip are missing from IDA environment, "
                      "execution inside IDA is impossible.")
@@ -46,7 +40,7 @@ def handle_prerequisites():
     # ignoring installed six and upgrading is requried to avoid an osx bug
     # see https://github.com/pypa/pip/issues/3165 for more details
     pip_command = ['install', 'pytest']
-    if 'osx' == 'osx':
+    if platform.system() == 'Darwin':
         pip_command += ['--upgrade', '--user', '--ignore-installed', 'six']
     pip_main(pip_command)
 
@@ -61,71 +55,59 @@ def handle_prerequisites():
     return True
 
 
-@command_handler
-def command_ping():
-    return ("pong",)
+class IdaWorker(threading.Thread):
+    def __init__(self, conn_fd, *args, **kwargs):
+        super(IdaWorker, self).__init__(*args, **kwargs)
+        self.conn = Connection(conn_fd)
+        self.stop = False
+        self.pytest_config = None
 
+    def run(self):
+        try:
+            while not self.stop:
+                command = self.conn.recv()
+                response = self.handle_command(*command)
+                self.conn.send(response)
+        except RuntimeError:
+            log.exception("Runtime error encountered during message handling")
+        except EOFError:
+            log.info("remote connection closed abruptly, terminating.")
 
-@command_handler
-def command_quit():
-    global stop
-    stop = True
-    return ("quitting",)
+    def handle_command(self, command, *command_args):
+        handler_name = "command_" + command
+        if not hasattr(self, handler_name):
+            raise RuntimeError("Unrecognized command recieved: "
+                               "'{}'".format(command))
+        log.debug("Received command: {} with args {}".format(command,
+                                                             command_args))
+        response = getattr(self, handler_name)(*command_args)
+        log.debug("Responding: {}".format(response))
+        return response
 
+    def command_configure(self, args, option_dict):
+        from _pytest.config import Config
 
-config = None
+        self.pytest_config = Config.fromdictargs(option_dict, args)
+        self.pytest_config.option.looponfail = False
+        self.pytest_config.option.usepdb = False
+        self.pytest_config.option.dist = "no"
+        self.pytest_config.option.distload = False
+        self.pytest_config.option.numprocesses = None
 
+        return ("configured",)
 
-@command_handler
-def command_configure(args, option_dict):
-    global config
-    from _pytest.config import Config
+    def command_cmdline_main(self):
+        self.pytest_config.hook.pytest_cmdline_main(config=self.pytest_config)
 
-    config = Config.fromdictargs(option_dict, args)
-    config.option.looponfail = False
-    config.option.usepdb = False
-    config.option.dist = "no"
-    config.option.distload = False
-    config.option.numprocesses = None
+        return ("cmdline_mained",)
 
-    return ("configured",)
+    @staticmethod
+    def command_ping():
+        return ("pong",)
 
-
-@command_handler
-def command_cmdline_main():
-    global config
-
-    config.hook.pytest_cmdline_main(config=config)
-
-    return ("cmdline_mained",)
-
-
-def handle_command(command, *command_args):
-    if command not in command_handlers:
-        raise RuntimeError("Unrecognized command recieved: "
-                           "'{}'".format(command))
-    log.debug("Received command: {} with args {}".format(command,
-                                                         command_args))
-    command_handler = command_handlers[command]
-    response = command_handler(*command_args)
-    log.debug("Responding: {}".format(response))
-    return response
-
-
-stop = False
-
-
-def handle_communication(conn):
-    global stop
-    try:
-        while not stop:
-            command = conn.recv()
-            response = handle_command(*command)
-            conn.send(response)
-    except RuntimeError:
-        log.exception("Runtime error encountered during message handling")
-    except EOFError:
-        log.info("remote connection closed abruptly, terminating.")
+    def command_quit(self):
+        self.stop = True
+        return ("quitting",)
 
 
 def main():
@@ -136,10 +118,10 @@ def main():
     if not handle_prerequisites():
         return
 
-    conn = Connection(int(idc.ARGV[1]))
+    # TODO: use idc.ARGV with some option parsing package
 
-    # TODO: run this in a new thread
-    handle_communication(conn)
+    worker = IdaWorker(int(idc.ARGV[1]))
+    worker.start()
 
 
 if __name__ == '__main__':
