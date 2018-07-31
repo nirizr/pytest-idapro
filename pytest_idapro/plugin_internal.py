@@ -16,38 +16,6 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger('pytest-idapro.internal.manager')
 
 
-def command_decorator(expected_response=None, prefix="command_"):
-    def decorator(func):
-        if not func.__name__.startswith(prefix):
-            raise ValueError("command_decorator can only be used on "
-                             "'command_' prefixed functions. Used on: "
-                             "{}".format(func))
-
-        @wraps(func)
-        def wrap(self, *args, **kwargs):
-            send = func.__name__[len(prefix):]
-            self.send(send)
-            if not expected_response:
-                return func(self, *args, **kwargs)
-
-            response = self.recv()
-            command = response[0]
-            command_args = response[1:]
-            if (isinstance(expected_response, str) and
-                command != expected_response):
-                raise RuntimeError("Invalid response recieved for '{}' "
-                                   "command: {}".format(func.__name__,
-                                                        response))
-
-            # expose relevant arguments in function signature
-            func_args = {'response', 'command', 'command_args'}
-            func_args &= set(inspect.getargspec(func)[0])
-            kwargs.update({k: locals()[k] for k in func_args})
-            return func(self, *args, **kwargs)
-        return wrap
-    return decorator
-
-
 class IdaManager(object):
     def __init__(self, ida_path, ida_file):
         self.ida_path = ida_path
@@ -124,6 +92,7 @@ class IdaManager(object):
                                "'{}' got '{}'".format(args, r))
 
         return r
+
 
 class InternalDeferredPlugin(object):
     def __init__(self, config):
