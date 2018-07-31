@@ -14,8 +14,7 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger('pytest-idapro.internal.manager')
 
 
-def command_decorator(expected_response=None):
-    prefix = "command_"
+def command_decorator(expected_response=None, prefix="command_"):
     def decorator(func):
         if not func.__name__.startswith(prefix):
             raise ValueError("command_decorator can only be used on "
@@ -71,13 +70,13 @@ class IdaManager(object):
             self.ida_file if self.ida_file else "-t"
         ]
         log.debug("worker execution arguments: %s", args)
-        proc = subprocess.Popen(args=args)
+        self.proc = subprocess.Popen(args=args)
 
         # send ping and wait for response to make sure connection is working
         # TODO: add a timeout and raise an exception on failure
         self.command_ping()
 
-        # proc.wait()
+        # self.proc.wait()
 
         return True
 

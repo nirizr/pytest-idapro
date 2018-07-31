@@ -68,6 +68,7 @@ def command_ping(args):
 
 @command_handler
 def command_quit(args):
+    global stop
     stop = True
     return "quitting"
 
@@ -87,6 +88,8 @@ def handle_command(command_line):
 
 
 stop = False
+
+
 def handle_communication(conn):
     global stop
     try:
