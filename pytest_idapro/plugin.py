@@ -9,10 +9,10 @@ def pytest_addoption(parser):
                                       "facilities")
     group._addoption('--ida', help="Run inside an IDA instance instead of "
                                    "mocking IDA up.")
-    group._addoption('--ida-file', help="Provide a file to load by IDA, either"
-                                        "IDB or any other readable format. If "
-                                        "no file is provided, an empty "
-                                        "database will be automatically "
+    group._addoption('--ida-file', help="Provide a file to load by IDA, "
+                                        "either IDB or any other readable "
+                                        "format. If no file is provided, an "
+                                        "empty database will be automatically "
                                         "loaded.")
 
 
