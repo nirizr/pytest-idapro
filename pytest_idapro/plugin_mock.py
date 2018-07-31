@@ -20,6 +20,11 @@ modules_list.extend(['idaapi', 'idc', 'idautils'])
 
 
 class MockDeferredPlugin(object):
+    def __init__(self, *args, **kwargs):
+        super(MockDeferredPlugin, self).__init__(*args, **kwargs)
+        self.qapp = None
+        self.tapp = None
+
     @staticmethod
     def pytest_configure(config):
         del config
@@ -44,12 +49,12 @@ class MockDeferredPlugin(object):
 
     @pytest.fixture(scope='session')
     def idapro_app(self):
-        qapp = QtWidgets.QApplication([])
+        self.qapp = QtWidgets.QApplication([])
         qmainwin = QtWidgets.QMainWindow()
         qmdiarea = QtWidgets.QMdiArea()
         qmainwin.setCentralWidget(qmdiarea)
         qmenu = QtWidgets.QMenu()
         qmainwin.setMenuWidget(qmenu)
-        t = threading.Thread(target=qapp.exec_)
-        t.start()
-        yield qapp
+        self.tapp = threading.Thread(target=self.qapp.exec_)
+        self.tapp.start()
+        yield self.qapp
