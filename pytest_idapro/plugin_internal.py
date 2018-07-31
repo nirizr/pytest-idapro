@@ -9,6 +9,8 @@ import multiprocessing
 import inspect
 from functools import wraps
 
+import copy
+
 import logging
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger('pytest-idapro.internal.manager')
@@ -29,8 +31,8 @@ def command_decorator(expected_response=None, prefix="command_"):
                 return func(self, *args, **kwargs)
 
             response = self.recv()
-            command_args = response.split(None, 1)
-            command = command_args.pop()
+            command = response[0]
+            command_args = response[1:]
             if (isinstance(expected_response, str) and
                 command != expected_response):
                 raise RuntimeError("Invalid response recieved for '{}' "
@@ -86,37 +88,55 @@ class IdaManager(object):
     def remote_fd(self):
         return self.remote_conn.fileno()
 
-    @command_decorator(expected_response="pong")
     def command_ping(self):
-        pass
+        self.send("ping")
+        self.recv("pong")
 
-    @command_decorator(expected_response="quitting")
+    def command_configure(self, config):
+        option_dict = copy.deepcopy(vars(config.option))
+        option_dict["plugins"].append("no:cacheprovider")
+        self.send("configure", config.args, option_dict)
+        self.recv("configured")
+
+    def command_cmdline_main(self):
+        self.send("cmdline_main")
+        self.recv("cmdline_mained")
+
     def command_quit(self):
-        pass
+        self.send("quit")
+        self.recv("quitting")
 
-    def send(self, s):
+    def send(self, *s):
         log.debug("Sending: %s", s)
         return self.conn.send(s)
 
-    def recv(self):
+    def recv(self, *args):
         try:
             r = self.conn.recv()
             log.debug("Received: %s", r)
-            return r
         except Exception:
             log.critical("Exception during receive, worker output: %s",
                          self.logfile.read())
             raise
 
+        if args and r[:len(args)] != args:
+            raise RuntimeError("Invalid response recieved; while expecting "
+                               "'{}' got '{}'".format(args, r))
+
+        return r
 
 class InternalDeferredPlugin(object):
     def __init__(self, config):
         ida_path = config.getoption('--ida')
         ida_file = config.getoption('--ida-file')
         self.ida_manager = IdaManager(ida_path, ida_file)
+        self.config = config
 
     def pytest_runtestloop(self, session):
         self.ida_manager.start()
+
+        self.ida_manager.command_configure(self.config)
+        self.ida_manager.command_cmdline_main()
 
         self.ida_manager.command_quit()
 
@@ -128,7 +148,3 @@ class InternalDeferredPlugin(object):
         # prohibit collection of test items in master process. test collection
         # should be done by a worker with access to IDA modules
         return True
-
-    @pytest.fixture(scope='session')
-    def idapro_app(self):
-        yield None

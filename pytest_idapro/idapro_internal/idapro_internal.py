@@ -62,27 +62,52 @@ def handle_prerequisites():
 
 
 @command_handler
-def command_ping(args):
-    return "pong"
+def command_ping():
+    return ("pong",)
 
 
 @command_handler
-def command_quit(args):
+def command_quit():
     global stop
     stop = True
-    return "quitting"
+    return ("quitting",)
 
 
-def handle_command(command_line):
-    command_args = command_line.split()
-    command = command_args.pop()
+config = None
 
+
+@command_handler
+def command_configure(args, option_dict):
+    global config
+    from _pytest.config import Config
+
+    config = Config.fromdictargs(option_dict, args)
+    config.option.looponfail = False
+    config.option.usepdb = False
+    config.option.dist = "no"
+    config.option.distload = False
+    config.option.numprocesses = None
+
+    return ("configured",)
+
+
+@command_handler
+def command_cmdline_main():
+    global config
+
+    config.hook.pytest_cmdline_main(config=config)
+
+    return ("cmdline_mained",)
+
+
+def handle_command(command, *command_args):
     if command not in command_handlers:
         raise RuntimeError("Unrecognized command recieved: "
                            "'{}'".format(command))
-    log.debug("Received command: {}".format(command_line))
+    log.debug("Received command: {} with args {}".format(command,
+                                                         command_args))
     command_handler = command_handlers[command]
-    response = command_handler(command_args)
+    response = command_handler(*command_args)
     log.debug("Responding: {}".format(response))
     return response
 
@@ -94,8 +119,8 @@ def handle_communication(conn):
     global stop
     try:
         while not stop:
-            command_line = conn.recv()
-            response = handle_command(command_line)
+            command = conn.recv()
+            response = handle_command(*command)
             conn.send(response)
     except RuntimeError:
         log.exception("Runtime error encountered during message handling")
@@ -104,6 +129,10 @@ def handle_communication(conn):
 
 
 def main():
+    import os
+    import sys
+    sys.path.append(os.getcwd())
+
     if not handle_prerequisites():
         return
 
