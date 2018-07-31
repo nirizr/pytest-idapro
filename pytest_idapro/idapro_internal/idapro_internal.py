@@ -8,7 +8,7 @@ except ImportError:  # python2
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
-log = logging.getLogger('pytest-idapro.worker')
+log = logging.getLogger('pytest-idapro.internal.worker')
 
 command_handlers = {}
 
@@ -66,6 +66,12 @@ def command_ping(args):
     return "pong"
 
 
+@command_handler
+def command_quit(args):
+    stop = True
+    return "quitting"
+
+
 def handle_command(command_line):
     command_args = command_line.split()
     command = command_args.pop()
@@ -73,23 +79,25 @@ def handle_command(command_line):
     if command not in command_handlers:
         raise RuntimeError("Unrecognized command recieved: "
                            "'{}'".format(command))
-    log.debug("Recieved command: {}".format(command_line))
+    log.debug("Received command: {}".format(command_line))
     command_handler = command_handlers[command]
     response = command_handler(command_args)
     log.debug("Responding: {}".format(response))
     return response
 
 
+stop = False
 def handle_communication(conn):
+    global stop
     try:
-        while conn.poll(None):
+        while not stop:
             command_line = conn.recv()
             response = handle_command(command_line)
             conn.send(response)
     except RuntimeError:
         log.exception("Runtime error encountered during message handling")
     except EOFError:
-        log.info("remote connection closed, terminating.")
+        log.info("remote connection closed abruptly, terminating.")
 
 
 def main():
@@ -98,6 +106,7 @@ def main():
 
     conn = Connection(int(idc.ARGV[1]))
 
+    # TODO: run this in a new thread
     handle_communication(conn)
 
 
