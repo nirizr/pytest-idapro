@@ -59,8 +59,10 @@ def handle_prerequisites():
 
     return True
 
+
 def idaexit():
     idaapi.qexit(0)
+
 
 class IdaWorker(threading.Thread):
     def __init__(self, conn_fd, *args, **kwargs):
@@ -96,15 +98,16 @@ class IdaWorker(threading.Thread):
         return response
 
     def command_dependencies(self, action):
-        #TODO
+        # TODO
         return ('dependencies', 'ready')
 
     def command_autoanalysis(self):
-        #TODO
+        # TODO
         return ('autoanalysis', 'done',)
 
     def command_configure(self, args, option_dict):
         from _pytest.config import Config
+        import worker_plugin
 
         self.pytest_config = Config.fromdictargs(option_dict, args)
         self.pytest_config.option.looponfail = False
@@ -112,6 +115,9 @@ class IdaWorker(threading.Thread):
         self.pytest_config.option.dist = "no"
         self.pytest_config.option.distload = False
         self.pytest_config.option.numprocesses = None
+
+        plugin = worker_plugin.WorkerPlugin()
+        self.pytest_config.pluginmanager.register(plugin)
 
         return ('configure', 'done')
 
@@ -138,6 +144,7 @@ def main():
 
     worker = IdaWorker(int(idc.ARGV[1]))
     worker.start()
+    # worker.run()
 
 
 if __name__ == '__main__':
