@@ -1,3 +1,5 @@
+import ida_kernwin
+import idaapi
 import idc
 
 try:  # python3
@@ -7,6 +9,9 @@ except ImportError:  # python2
 
 import threading
 import platform
+
+import os
+import sys
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
@@ -54,10 +59,13 @@ def handle_prerequisites():
 
     return True
 
+def idaexit():
+    idaapi.qexit(0)
 
 class IdaWorker(threading.Thread):
     def __init__(self, conn_fd, *args, **kwargs):
         super(IdaWorker, self).__init__(*args, **kwargs)
+        self.daemon = True
         self.conn = Connection(conn_fd)
         self.stop = False
         self.pytest_config = None
@@ -73,6 +81,9 @@ class IdaWorker(threading.Thread):
         except EOFError:
             log.info("remote connection closed abruptly, terminating.")
 
+        # upon completion, quit IDA
+        ida_kernwin.execute_sync(idaexit, ida_kernwin.MFF_NOWAIT)
+
     def handle_command(self, command, *command_args):
         handler_name = "command_" + command
         if not hasattr(self, handler_name):
@@ -84,6 +95,14 @@ class IdaWorker(threading.Thread):
         log.debug("Responding: {}".format(response))
         return response
 
+    def command_dependencies(self, action):
+        #TODO
+        return ('dependencies', 'ready')
+
+    def command_autoanalysis(self):
+        #TODO
+        return ('autoanalysis', 'done',)
+
     def command_configure(self, args, option_dict):
         from _pytest.config import Config
 
@@ -94,16 +113,15 @@ class IdaWorker(threading.Thread):
         self.pytest_config.option.distload = False
         self.pytest_config.option.numprocesses = None
 
-        return ("configured",)
+        return ('configure', 'done')
 
     def command_cmdline_main(self):
         self.pytest_config.hook.pytest_cmdline_main(config=self.pytest_config)
-
-        return ("cmdline_mained",)
+        return ('cmdline_main', 'done')
 
     @staticmethod
     def command_ping():
-        return ("pong",)
+        return ('pong',)
 
     def command_quit(self):
         self.stop = True
@@ -111,8 +129,6 @@ class IdaWorker(threading.Thread):
 
 
 def main():
-    import os
-    import sys
     sys.path.append(os.getcwd())
 
     if not handle_prerequisites():
@@ -125,6 +141,4 @@ def main():
 
 
 if __name__ == '__main__':
-    # TODO: wait until auto-analysis is done
     main()
-    # TODO: quit IDA

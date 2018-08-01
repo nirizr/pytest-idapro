@@ -1,14 +1,8 @@
-import pytest
-
 import os
 import tempfile
 import subprocess
 
 import multiprocessing
-
-import inspect
-from functools import wraps
-
 import copy
 
 import logging
@@ -57,22 +51,34 @@ class IdaManager(object):
         return self.remote_conn.fileno()
 
     def command_ping(self):
-        self.send("ping")
-        self.recv("pong")
+        self.send('ping')
+        self.recv('pong')
+
+    def command_dependencies(self):
+        self.send('dependencies', 'check')
+        if self.recv('dependencies') == ('ready',):
+            return
+
+        self.send('dependencies', 'install')
+        self.recv('dependencies', 'ready')
+
+    def command_wait_autoanalysis(self):
+        self.send('autoanalysis', 'wait')
+        self.recv('autoanalysis', 'done')
 
     def command_configure(self, config):
         option_dict = copy.deepcopy(vars(config.option))
         option_dict["plugins"].append("no:cacheprovider")
-        self.send("configure", config.args, option_dict)
-        self.recv("configured")
+        self.send('configure', config.args, option_dict)
+        self.recv('configure', 'done')
 
     def command_cmdline_main(self):
-        self.send("cmdline_main")
-        self.recv("cmdline_mained")
+        self.send('cmdline_main')
+        self.recv('cmdline_main', 'done')
 
     def command_quit(self):
-        self.send("quit")
-        self.recv("quitting")
+        self.send('quit')
+        self.recv('quitting')
 
     def send(self, *s):
         log.debug("Sending: %s", s)
@@ -91,7 +97,7 @@ class IdaManager(object):
             raise RuntimeError("Invalid response recieved; while expecting "
                                "'{}' got '{}'".format(args, r))
 
-        return r
+        return r[len(args):]
 
 
 class InternalDeferredPlugin(object):
