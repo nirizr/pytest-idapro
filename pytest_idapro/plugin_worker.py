@@ -1,6 +1,9 @@
 import pytest
 
-from plugin_base import BasePlugin
+try:
+    from plugin_base import BasePlugin
+except ImportError:
+    from .plugin_base import BasePlugin
 
 
 class WorkerPlugin(BasePlugin):
@@ -8,5 +11,3 @@ class WorkerPlugin(BasePlugin):
     def idapro_app(self):
         from PyQt5 import QtWidgets
         yield QtWidgets.qApp
-
-

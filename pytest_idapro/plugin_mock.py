@@ -1,13 +1,12 @@
 import sys
 import threading
-import inspect
 
 from . import idapro_mock
 
 from PyQt5 import QtWidgets
 import pytest
 
-from plugin_base import BasePlugin
+from .plugin_base import BasePlugin
 
 modules_list = ['ida_allins', 'ida_area', 'ida_auto', 'ida_bytes', 'ida_dbg',
                 'ida_diskio', 'ida_entry', 'ida_enum', 'ida_expr', 'ida_fixup',
