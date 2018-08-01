@@ -62,7 +62,7 @@ class IdaManager(object):
         self.send('dependencies', 'install')
         self.recv('dependencies', 'ready')
 
-    def command_wait_autoanalysis(self):
+    def command_autoanalysis_wait(self):
         self.send('autoanalysis', 'wait')
         self.recv('autoanalysis', 'done')
 
@@ -110,6 +110,8 @@ class InternalDeferredPlugin(object):
     def pytest_runtestloop(self, session):
         self.ida_manager.start()
 
+        self.ida_manager.command_dependencies()
+        self.ida_manager.command_autoanalysis_wait()
         self.ida_manager.command_configure(self.config)
         self.ida_manager.command_cmdline_main()
 

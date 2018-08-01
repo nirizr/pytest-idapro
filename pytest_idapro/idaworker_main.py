@@ -1,3 +1,4 @@
+import ida_auto
 import ida_kernwin
 import idaapi
 import idc
@@ -101,9 +102,13 @@ class IdaWorker(object):
         # TODO
         return ('dependencies', 'ready')
 
-    def command_autoanalysis(self):
-        # TODO
-        return ('autoanalysis', 'done',)
+    def command_autoanalysis(self, action):
+        if action == "wait":
+            ida_auto.auto_wait()
+            return ('autoanalysis', 'done',)
+        else:
+            raise RuntimeError("Invalid action received for command: "
+                               "{}".format(action))
 
     def command_configure(self, args, option_dict):
         from _pytest.config import Config
