@@ -34,33 +34,3 @@ def pytest_configure(config):
         from . import plugin_mock
         deferred_plugin = plugin_mock.MockDeferredPlugin()
     config.pluginmanager.register(deferred_plugin)
-
-
-idapro_plugin_entries = []
-idapro_action_entries = []
-
-
-class IDAProEntriesScanner(pytest.Module):
-    def istestfunction(self, obj, name):
-        if name == "PLUGIN_ENTRY":
-            idapro_plugin_entries.append(obj)
-
-    def istestclass(self, obj, name):
-        if any(cls.__name__ == 'action_handler_t'
-               for cls in inspect.getmro(obj)):
-            idapro_action_entries.append(obj)
-
-
-def pytest_collect_file(path, parent):
-    if not path.ext == '.py':
-        return
-
-    scanner = IDAProEntriesScanner(path, parent)
-    scanner.collect()
-
-
-def pytest_generate_tests(metafunc):
-    if 'idapro_plugin_entry' in metafunc.fixturenames:
-        metafunc.parametrize('idapro_plugin_entry', idapro_plugin_entries)
-    if 'idapro_action_entry' in metafunc.fixturenames:
-        metafunc.parametrize('idapro_action_entry', idapro_action_entries)

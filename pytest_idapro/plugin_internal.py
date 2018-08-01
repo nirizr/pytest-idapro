@@ -6,6 +6,7 @@ import multiprocessing
 import copy
 
 import logging
+
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger('pytest-idapro.internal.manager')
 
@@ -19,8 +20,7 @@ class IdaManager(object):
 
     def start(self):
         internal_script = os.path.join(os.path.dirname(__file__),
-                                       "idapro_internal",
-                                       "idapro_internal.py")
+                                       "idaworker_main.py")
 
         script_args = '{}'.format(self.remote_fd())
         args = [

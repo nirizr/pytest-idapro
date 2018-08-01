@@ -1,11 +1,13 @@
 import sys
 import threading
+import inspect
 
 from . import idapro_mock
 
 from PyQt5 import QtWidgets
 import pytest
 
+from plugin_base import BasePlugin
 
 modules_list = ['ida_allins', 'ida_area', 'ida_auto', 'ida_bytes', 'ida_dbg',
                 'ida_diskio', 'ida_entry', 'ida_enum', 'ida_expr', 'ida_fixup',
@@ -19,7 +21,7 @@ modules_list = ['ida_allins', 'ida_area', 'ida_auto', 'ida_bytes', 'ida_dbg',
 modules_list.extend(['idaapi', 'idc', 'idautils'])
 
 
-class MockDeferredPlugin(object):
+class MockDeferredPlugin(BasePlugin):
     def __init__(self, *args, **kwargs):
         super(MockDeferredPlugin, self).__init__(*args, **kwargs)
         self.qapp = None

@@ -7,13 +7,13 @@ try:  # python3
 except ImportError:  # python2
     from _multiprocessing import Connection
 
-import threading
 import platform
 
 import os
 import sys
 
 import logging
+
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger('pytest-idapro.internal.worker')
 
@@ -64,7 +64,7 @@ def idaexit():
     idaapi.qexit(0)
 
 
-class IdaWorker(threading.Thread):
+class IdaWorker(object):
     def __init__(self, conn_fd, *args, **kwargs):
         super(IdaWorker, self).__init__(*args, **kwargs)
         self.daemon = True
@@ -107,7 +107,7 @@ class IdaWorker(threading.Thread):
 
     def command_configure(self, args, option_dict):
         from _pytest.config import Config
-        import worker_plugin
+        import plugin_worker
 
         self.pytest_config = Config.fromdictargs(option_dict, args)
         self.pytest_config.option.looponfail = False
@@ -116,7 +116,7 @@ class IdaWorker(threading.Thread):
         self.pytest_config.option.distload = False
         self.pytest_config.option.numprocesses = None
 
-        plugin = worker_plugin.WorkerPlugin()
+        plugin = plugin_worker.WorkerPlugin()
         self.pytest_config.pluginmanager.register(plugin)
 
         return ('configure', 'done')
@@ -136,6 +136,7 @@ class IdaWorker(threading.Thread):
 
 def main():
     sys.path.append(os.getcwd())
+    sys.path.append(os.path.dirname(__file__))
 
     if not handle_prerequisites():
         return
@@ -143,8 +144,10 @@ def main():
     # TODO: use idc.ARGV with some option parsing package
 
     worker = IdaWorker(int(idc.ARGV[1]))
-    worker.start()
-    # worker.run()
+    # TODO: either make threaded execution work (by sceduling execution in
+    # IDA's main thread) or remove threadrelated implementation details.
+    # worker.start()
+    worker.run()
 
 
 if __name__ == '__main__':
