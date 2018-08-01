@@ -17,6 +17,7 @@ class IdaManager(object):
         self.ida_file = ida_file
         self.remote_conn, self.conn = multiprocessing.Pipe()
         self.logfile = tempfile.NamedTemporaryFile(delete=False)
+        self.stop = False
 
     def start(self):
         internal_script = os.path.join(os.path.dirname(__file__),
@@ -43,6 +44,15 @@ class IdaManager(object):
         # self.proc.wait()
 
         return True
+
+    def finish(self, interrupted):
+        if interrupted:
+            log.warning("Abrupt termination of external test session. worker "
+                        "log: %s", self.logfile.read())
+        log.info("Stopping...")
+        if not self.proc.poll():
+            self.proc.kill()
+        self.stop = True
 
     def __del__(self):
         log.info("%s", self.logfile.read())
@@ -86,6 +96,10 @@ class IdaManager(object):
 
     def recv(self, *args):
         try:
+            while not self.conn.poll(1):
+                if self.stop:
+                    raise KeyboardInterrupt
+
             r = self.conn.recv()
             log.debug("Received: %s", r)
         except Exception:
@@ -108,18 +122,23 @@ class InternalDeferredPlugin(object):
         self.config = config
 
     def pytest_runtestloop(self, session):
-        self.ida_manager.start()
+        try:
+            self.ida_manager.start()
 
-        self.ida_manager.command_dependencies()
-        self.ida_manager.command_autoanalysis_wait()
-        self.ida_manager.command_configure(self.config)
-        self.ida_manager.command_cmdline_main()
+            self.ida_manager.command_dependencies()
+            self.ida_manager.command_autoanalysis_wait()
+            self.ida_manager.command_configure(self.config)
+            self.ida_manager.command_cmdline_main()
 
-        self.ida_manager.command_quit()
+            self.ida_manager.command_quit()
+        except Exception:
+            log.exception("Exception encountered in runtestloop")
+            raise
 
-        # TODO: when should this return?
-        del self.ida_manager
         return True
+
+    def pytest_sessionfinish(self, exitstatus):
+        self.ida_manager.finish(exitstatus==2)  # EXIT_ITERRUPTED
 
     def pytest_collection(self):
         # prohibit collection of test items in master process. test collection
