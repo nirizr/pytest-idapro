@@ -74,8 +74,13 @@ class IdaWorker(object):
         self.pytest_config = None
 
     def run(self):
+        from PyQt5.QtWidgets import qApp
         try:
             while not self.stop:
+                qApp.processEvents()
+                if not self.conn.poll(1):
+                    continue
+
                 command = self.conn.recv()
                 response = self.handle_command(*command)
                 self.conn.send(response)
