@@ -72,18 +72,16 @@ class IdaWorker(object):
         self.conn = Connection(conn_fd)
         self.stop = False
         self.pytest_config = None
+        from PyQt5.QtWidgets import qApp
+        self.qapp = qApp
 
     def run(self):
-        from PyQt5.QtWidgets import qApp
         try:
             while not self.stop:
-                qApp.processEvents()
-                if not self.conn.poll(1):
-                    continue
-
-                command = self.conn.recv()
+                command = self.recv()
                 response = self.handle_command(*command)
-                self.conn.send(response)
+                if response:
+                    self.conn.send(response)
         except RuntimeError:
             log.exception("Runtime error encountered during message handling")
         except EOFError:
@@ -91,6 +89,17 @@ class IdaWorker(object):
 
         # upon completion, quit IDA
         ida_kernwin.execute_sync(idaexit, ida_kernwin.MFF_NOWAIT)
+
+    def recv(self):
+        while not self.stop:
+            self.qapp.processEvents()
+            if not self.conn.poll(1):
+                continue
+
+            return self.conn.recv()
+
+    def send(self, *s):
+        return self.conn.send(s)
 
     def handle_command(self, command, *command_args):
         handler_name = "command_" + command
@@ -126,14 +135,15 @@ class IdaWorker(object):
         self.pytest_config.option.distload = False
         self.pytest_config.option.numprocesses = None
 
-        plugin = plugin_worker.WorkerPlugin()
+        plugin = plugin_worker.WorkerPlugin(worker=self)
         self.pytest_config.pluginmanager.register(plugin)
 
         return ('configure', 'done')
 
     def command_cmdline_main(self):
+        self.send('cmdline_main', 'start')
         self.pytest_config.hook.pytest_cmdline_main(config=self.pytest_config)
-        return ('cmdline_main', 'done')
+        self.send('cmdline_main', 'finish')
 
     @staticmethod
     def command_ping():
