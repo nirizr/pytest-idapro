@@ -12,15 +12,17 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger('pytest-idapro.internal.manager')
 
 
-class IdaManager(object):
-    def __init__(self, ida_path, ida_file):
-        self.ida_path = ida_path
-        self.ida_file = ida_file
+class InternalDeferredPlugin(object):
+    def __init__(self, config):
+        self.ida_path = config.getoption('--ida')
+        self.ida_file = config.getoption('--ida-file')
+        self.config = config
+        self.session = None
         self.remote_conn, self.conn = multiprocessing.Pipe()
         self.logfile = tempfile.NamedTemporaryFile(delete=False)
         self.stop = False
 
-    def start(self):
+    def ida_start(self):
         internal_script = os.path.join(os.path.dirname(__file__),
                                        "idaworker_main.py")
 
@@ -38,15 +40,7 @@ class IdaManager(object):
         log.debug("worker execution arguments: %s", args)
         self.proc = subprocess.Popen(args=args)
 
-        # send ping and wait for response to make sure connection is working
-        # TODO: add a timeout and raise an exception on failure
-        self.command_ping()
-
-        # self.proc.wait()
-
-        return True
-
-    def finish(self, interrupted):
+    def ida_finish(self, interrupted):
         if interrupted:
             log.warning("Abrupt termination of external test session. worker "
                         "log: %s", self.logfile.read())
@@ -89,19 +83,29 @@ class IdaManager(object):
 
     def command_collect(self):
         self.recv('collection', 'start')
-        return self.recv('collection', 'finish')
+        self.config.hook.pytest_collectstart()
+
+        collected_tests = self.recv('collection', 'finish')
+        self.session.testscollected = len(collected_tests)
+        self.config.hook.pytest_collection_finish(session=self.session)
 
     def command_runtest(self):
         self.recv('runtest', 'start')
         while True:
             r = self.recv('runtest')
-            if r[0] not in ('logstart', 'logfinish'):
+            if r[0] == 'logstart':
+                self.config.hook.pytest_runtest_logstart(nodeid=r[1],
+                                                         location=r[2])
+            elif r[0] == 'logfinish':
+                # the pytest_runtest_logfinish hook was introduced in pytest3.4
+                if hasattr(self.config.hook, 'pytest_runtest_logfinish'):
+                    self.config.hook.pytest_runtest_logfinish(nodeid=r[1],
+                                                              location=r[2])
+            elif r[0] == 'finish':
                 break
-
-            yield r
-        # runtest finish will be swallowed by the last while condition,
-        # causing it to break.
-        # self.recv('runtest', 'finish')
+            else:
+                raise RuntimeError("Invalid runtest response received: "
+                                   "{}".format(r))
 
     def command_quit(self):
         self.send('quit')
@@ -130,36 +134,23 @@ class IdaManager(object):
 
         return r[len(args):]
 
-
-class InternalDeferredPlugin(object):
-    def __init__(self, config):
-        ida_path = config.getoption('--ida')
-        ida_file = config.getoption('--ida-file')
-        self.ida_manager = IdaManager(ida_path, ida_file)
-        self.config = config
-
     def pytest_runtestloop(self, session):
+        self.session = session
         try:
-            self.ida_manager.start()
+            self.ida_start()
+            self.command_ping()
 
-            self.ida_manager.command_dependencies()
-            self.ida_manager.command_autoanalysis_wait()
-            self.ida_manager.command_configure(self.config)
-            self.ida_manager.command_cmdline_main()
-            collected_tests = self.ida_manager.command_collect()
-            # TODO: call hooks, collection start, item and finish
-            session.testscollected = len(collected_tests)
-            for r in self.ida_manager.command_runtest():
-                if r[0] == 'logstart':
-                    self.config.hook.pytest_runtest_logstart(nodeid=r[1],
-                                                             location=r[2])
-                if r[0] == 'logfinish' and hasattr(self.config.hook,
-                                                   'pytest_runtest_logfinish'):
-                    self.config.hook.pytest_runtest_logfinish(nodeid=r[1],
-                                                              location=r[2])
+            self.command_dependencies()
+            self.command_autoanalysis_wait()
+            self.command_configure(self.config)
+            self.command_cmdline_main()
 
-            self.ida_manager.recv('cmdline_main', 'finish')
-            self.ida_manager.command_quit()
+            self.command_collect()
+
+            self.command_runtest()
+
+            self.recv('cmdline_main', 'finish')
+            self.command_quit()
         except Exception:
             log.exception("Exception encountered in runtestloop")
             raise
@@ -167,7 +158,7 @@ class InternalDeferredPlugin(object):
         return True
 
     def pytest_sessionfinish(self, exitstatus):
-        self.ida_manager.finish(exitstatus == 2)  # EXIT_ITERRUPTED
+        self.ida_finish(exitstatus == 2)  # EXIT_ITERRUPTED
 
     def pytest_collection(self):
         # prohibit collection of test items in master process. test collection
