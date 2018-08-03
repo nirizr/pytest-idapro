@@ -1,5 +1,4 @@
 import ida_auto
-import ida_kernwin
 import idaapi
 import idc
 
@@ -17,10 +16,6 @@ import logging
 
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger('pytest-idapro.internal.worker')
-
-
-def idaexit():
-    idaapi.qexit(0)
 
 
 class IdaWorker(object):
@@ -44,9 +39,6 @@ class IdaWorker(object):
             log.exception("Runtime error encountered during message handling")
         except EOFError:
             log.info("remote connection closed abruptly, terminating.")
-
-        # upon completion, quit IDA
-        ida_kernwin.execute_sync(idaexit, ida_kernwin.MFF_NOWAIT)
 
     def recv(self):
         while not self.stop:
@@ -163,10 +155,8 @@ def main():
     # TODO: use idc.ARGV with some option parsing package
 
     worker = IdaWorker(int(idc.ARGV[1]))
-    # TODO: either make threaded execution work (by sceduling execution in
-    # IDA's main thread) or remove threadrelated implementation details.
-    # worker.start()
     worker.run()
+    idaapi.qexit(0)
 
 
 if __name__ == '__main__':
