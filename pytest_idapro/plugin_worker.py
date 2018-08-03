@@ -19,6 +19,10 @@ class WorkerPlugin(BasePlugin):
     def pytest_collection(self):
         self.worker.send('collection', 'start')
 
+    def pytest_collectreport(self, report):
+        serialized_report = self.serialize_report(report)
+        self.worker.send('collection', 'report', serialized_report)
+
     def pytest_collection_finish(self, session):
         items = [i.nodeid for i in session.items]
         self.worker.send('collection', 'finish', items)
@@ -38,9 +42,35 @@ class WorkerPlugin(BasePlugin):
             self.worker.send('runtest', 'logfinish', nodeid, location)
 
     def pytest_runtest_logreport(self, report):
+        serialized_report = self.serialize_report(report)
+        self.worker.send('runtest', 'logreport', serialized_report)
+
+    def pytest_logwarning(self, message, code, nodeid, fslocation):
         pass
+
+    @pytest.hookimpl(hookwrapper=True)
+    def pytest_sessionfinish(self, exitstatus):
+        yield
+        self.worker.send('session', 'finish', exitstatus)
 
     @pytest.fixture(scope='session')
     def idapro_app(self):
         from PyQt5 import QtWidgets
         yield QtWidgets.qApp
+
+    def serialize_report(self, report):
+        from py.path import local
+
+        d = vars(report).copy()
+        if hasattr(report.longrepr, "toterminal"):
+            d['longrepr'] = str(report.longrepr)
+        else:
+            d['longrepr'] = report.longrepr
+
+        for name, value in d.items():
+            if isinstance(value, local):
+                d[name] = str(value)
+            elif name == "result":
+                d["result"] = None
+
+        return d

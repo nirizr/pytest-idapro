@@ -85,9 +85,17 @@ class InternalDeferredPlugin(object):
         self.recv('collection', 'start')
         self.config.hook.pytest_collectstart()
 
-        collected_tests = self.recv('collection', 'finish')
-        self.session.testscollected = len(collected_tests)
-        self.config.hook.pytest_collection_finish(session=self.session)
+        while True:
+            r = self.recv('collection')
+            if r[0] == 'report':
+                report = self.deserialize_report("collect", r[1])
+                self.config.hook.pytest_collectreport(report=report)
+                pass
+            elif r[0] == 'finish':
+                collected_tests = r[1]
+                self.session.testscollected = len(collected_tests)
+                self.config.hook.pytest_collection_finish(session=self.session)
+                break
 
     def command_runtest(self):
         self.recv('runtest', 'start')
@@ -96,6 +104,9 @@ class InternalDeferredPlugin(object):
             if r[0] == 'logstart':
                 self.config.hook.pytest_runtest_logstart(nodeid=r[1],
                                                          location=r[2])
+            elif r[0] == 'logreport':
+                report = self.deserialize_report("test", r[1])
+                self.config.hook.pytest_runtest_logreport(report=report)
             elif r[0] == 'logfinish':
                 # the pytest_runtest_logfinish hook was introduced in pytest3.4
                 if hasattr(self.config.hook, 'pytest_runtest_logfinish'):
@@ -134,6 +145,15 @@ class InternalDeferredPlugin(object):
 
         return r[len(args):]
 
+    def deserialize_report(self, reporttype, report):
+        from _pytest.runner import TestReport, CollectReport
+        if reporttype == "test":
+            return TestReport(**report)
+        elif reporttype == "collect":
+            return CollectReport(**report)
+        else:
+            raise RuntimeError("Invalid report type: {}".format(reporttype))
+
     def pytest_runtestloop(self, session):
         self.session = session
         try:
@@ -148,6 +168,8 @@ class InternalDeferredPlugin(object):
             self.command_collect()
 
             self.command_runtest()
+
+            exitstatus = self.recv('session', 'finish')
 
             self.recv('cmdline_main', 'finish')
             self.command_quit()
