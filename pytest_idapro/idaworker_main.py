@@ -112,11 +112,12 @@ class IdaWorker(object):
         log.debug("Responding: {}".format(response))
         return response
 
-    def command_dependencies(self, action):
-        # TODO
+    @staticmethod
+    def command_dependencies(action):
         return ('dependencies', 'ready')
 
-    def command_autoanalysis(self, action):
+    @staticmethod
+    def command_autoanalysis(action):
         if action == "wait":
             ida_auto.auto_wait()
             return ('autoanalysis', 'done',)

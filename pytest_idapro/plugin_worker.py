@@ -54,11 +54,13 @@ class WorkerPlugin(BasePlugin):
         self.worker.send('session', 'finish', exitstatus)
 
     @pytest.fixture(scope='session')
-    def idapro_app(self):
+    @staticmethod
+    def idapro_app():
         from PyQt5 import QtWidgets
         yield QtWidgets.qApp
 
-    def serialize_report(self, report):
+    @staticmethod
+    def serialize_report(report):
         from py.path import local
 
         d = vars(report).copy()

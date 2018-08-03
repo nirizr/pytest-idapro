@@ -90,7 +90,6 @@ class InternalDeferredPlugin(object):
             if r[0] == 'report':
                 report = self.deserialize_report("collect", r[1])
                 self.config.hook.pytest_collectreport(report=report)
-                pass
             elif r[0] == 'finish':
                 collected_tests = r[1]
                 self.session.testscollected = len(collected_tests)
@@ -145,7 +144,8 @@ class InternalDeferredPlugin(object):
 
         return r[len(args):]
 
-    def deserialize_report(self, reporttype, report):
+    @staticmethod
+    def deserialize_report(reporttype, report):
         from _pytest.runner import TestReport, CollectReport
         if reporttype == "test":
             return TestReport(**report)
@@ -170,6 +170,9 @@ class InternalDeferredPlugin(object):
             self.command_runtest()
 
             exitstatus = self.recv('session', 'finish')
+            # TODO: The same exit status will be derived by pytest. might be
+            # useful to make sure they match
+            del exitstatus
 
             self.recv('cmdline_main', 'finish')
             self.command_quit()
@@ -182,7 +185,8 @@ class InternalDeferredPlugin(object):
     def pytest_sessionfinish(self, exitstatus):
         self.ida_finish(exitstatus == 2)  # EXIT_ITERRUPTED
 
-    def pytest_collection(self):
+    @staticmethod
+    def pytest_collection():
         # prohibit collection of test items in master process. test collection
         # should be done by a worker with access to IDA modules
         return True
