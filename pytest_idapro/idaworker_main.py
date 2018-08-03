@@ -19,48 +19,6 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger('pytest-idapro.internal.worker')
 
 
-def handle_prerequisites():
-    # test pytest is installed, otherwise attempt installing
-    try:
-        import pytest
-        del pytest
-        return True
-    except ImportError:
-        pass
-
-    try:
-        import pip
-        del pip
-    except ImportError:
-        log.critical("Both pytest and pip are missing from IDA environment, "
-                     "execution inside IDA is impossible.")
-        return False
-
-    # handle different versions of pip
-    try:
-        from pip import main as pip_main
-    except ImportError:
-        # here be dragons
-        from pip._internal import main as pip_main
-
-    # ignoring installed six and upgrading is requried to avoid an osx bug
-    # see https://github.com/pypa/pip/issues/3165 for more details
-    pip_command = ['install', 'pytest']
-    if platform.system() == 'Darwin':
-        pip_command += ['--upgrade', '--user', '--ignore-installed', 'six']
-    pip_main(pip_command)
-
-    try:
-        import pytest
-        del pytest
-    except ImportError:
-        log.exception("pytest module unavailable after installation attempt, "
-                      "cannot proceed.")
-        return False
-
-    return True
-
-
 def idaexit():
     idaapi.qexit(0)
 
@@ -112,9 +70,52 @@ class IdaWorker(object):
         log.debug("Responding: {}".format(response))
         return response
 
-    @staticmethod
-    def command_dependencies(action):
-        return ('dependencies', 'ready')
+    def command_dependencies(self, action):
+        # test pytest is installed and return ready if it is
+        if action == "check":
+            try:
+                import pytest
+                del pytest
+                return ('dependencies', 'ready')
+            except ImportError:
+                pass
+
+            # pytest is missing, we'll report so and expect to be requested to
+            # install
+            self.send('dependencies', 'missing')
+        elif action == "install":
+            # test at least pip exists, otherwise we're doomed to fail
+            try:
+                import pip
+                del pip
+            except ImportError:
+                return ('dependencies', 'failed')
+
+            # handle different versions of pip
+            try:
+                from pip import main as pip_main
+            except ImportError:
+                # here be dragons
+                from pip._internal import main as pip_main
+
+            # ignoring installed six and upgrading is requried to avoid an osx
+            # bug see https://github.com/pypa/pip/issues/3165 for more details
+            pip_command = ['install', 'pytest']
+            if platform.system() == 'Darwin':
+                pip_command += ['--upgrade', '--user', '--ignore-installed',
+                                'six']
+            pip_main(pip_command)
+
+            # make sure pytest was successfully installed
+            try:
+                import pytest
+                del pytest
+                return ('dependencies', 'ready')
+            except ImportError:
+                return ('dependencies', 'failed')
+        else:
+            raise RuntimeError("Unexpected dependencies argument: "
+                               "{}".format(action))
 
     @staticmethod
     def command_autoanalysis(action):
@@ -158,9 +159,6 @@ class IdaWorker(object):
 def main():
     sys.path.append(os.getcwd())
     sys.path.append(os.path.dirname(__file__))
-
-    if not handle_prerequisites():
-        return
 
     # TODO: use idc.ARGV with some option parsing package
 

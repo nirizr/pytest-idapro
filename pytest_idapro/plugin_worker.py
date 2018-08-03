@@ -54,8 +54,7 @@ class WorkerPlugin(BasePlugin):
         self.worker.send('session', 'finish', exitstatus)
 
     @pytest.fixture(scope='session')
-    @staticmethod
-    def idapro_app():
+    def idapro_app(self):
         from PyQt5 import QtWidgets
         yield QtWidgets.qApp
 
