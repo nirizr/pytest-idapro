@@ -15,8 +15,11 @@ def pytest_addoption(parser):
                                         "loaded.")
 
 
+@pytest.hookimpl(tryfirst=True)
 def pytest_cmdline_main(config):
     ida_path = config.getoption('--ida')
+    if ida_path and config.pluginmanager.has_plugin('pytest-qt'):
+        config.pluginmanager.set_blocked("pytest-qt")
     if ida_path and not os.path.isfile(ida_path):
         raise pytest.UsageError("--ida must point to an IDA executable.")
     ida_file = config.getoption('--ida-file')
