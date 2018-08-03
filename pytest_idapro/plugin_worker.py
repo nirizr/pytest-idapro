@@ -61,21 +61,3 @@ class WorkerPlugin(BasePlugin):
     def idapro_app(self):
         from PyQt5 import QtWidgets
         yield QtWidgets.qApp
-
-    @staticmethod
-    def serialize_report(report):
-        from py.path import local
-
-        d = vars(report).copy()
-        if hasattr(report.longrepr, "toterminal"):
-            d['longrepr'] = str(report.longrepr)
-        else:
-            d['longrepr'] = report.longrepr
-
-        for name, value in d.items():
-            if isinstance(value, local):
-                d[name] = str(value)
-            elif name == "result":
-                d["result"] = None
-
-        return d

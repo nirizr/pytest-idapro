@@ -7,7 +7,7 @@ import copy
 
 import logging
 
-# logging.basicConfig()
+#logging.basicConfig()
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger('pytest-idapro.internal.manager')
 
