@@ -23,6 +23,10 @@ class WorkerPlugin(BasePlugin):
         serialized_report = self.serialize_report(report)
         self.worker.send('collection', 'report', serialized_report)
 
+    def pytest_collection_modifyitems(self, items):
+        # TODO: cannot serialize items, passing an empty list for now
+        self.worker.send('collection', 'modifyitems', [])
+
     def pytest_collection_finish(self, session):
         items = [i.nodeid for i in session.items]
         self.worker.send('collection', 'finish', items)

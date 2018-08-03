@@ -95,6 +95,15 @@ class InternalDeferredPlugin(object):
                 self.session.testscollected = len(collected_tests)
                 self.config.hook.pytest_collection_finish(session=self.session)
                 break
+            elif r[0] == 'modifyitems':
+                self.config.hook.pytest_collection_modifyitems(
+                    session=self.session,
+                    config=self.config,
+                    items=r[1])
+            else:
+                raise RuntimeError("Invalid collect response received: "
+                                   "{}".format(r))
+
 
     def command_runtest(self):
         self.recv('runtest', 'start')
