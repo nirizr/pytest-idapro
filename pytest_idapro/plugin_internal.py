@@ -77,7 +77,16 @@ class InternalDeferredPlugin(object):
 
     def command_configure(self, config):
         option_dict = copy.deepcopy(vars(config.option))
+
+        # block interfering plugins
         option_dict["plugins"].append("no:cacheprovider")
+        option_dict["plugins"].append("no:pytest-qt")
+
+        # cleanup our own plugin configuration
+        option_dict["plugins"].append("no:idapro")
+        del option_dict['ida']
+        del option_dict['ida_file']
+
         if platform.system() == "Windows":
             # remove capturing, this doesn't properly work in windows
             option_dict["plugins"].append("no:terminal")

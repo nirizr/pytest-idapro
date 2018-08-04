@@ -125,6 +125,7 @@ class IdaWorker(object):
         self.pytest_config.option.dist = "no"
         self.pytest_config.option.distload = False
         self.pytest_config.option.numprocesses = None
+        self.pytest_config.args = args
 
         plugin = plugin_worker.WorkerPlugin(worker=self)
         self.pytest_config.pluginmanager.register(plugin)
