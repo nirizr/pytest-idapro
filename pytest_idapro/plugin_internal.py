@@ -78,6 +78,10 @@ class InternalDeferredPlugin(object):
     def command_configure(self, config):
         option_dict = copy.deepcopy(vars(config.option))
         option_dict["plugins"].append("no:cacheprovider")
+        if platform.system() == "Windows":
+            # remove capturing, this doesn't properly work in windows
+            option_dict["plugins"].append("no:terminal")
+            option_dict["capture"] = "sys"
         self.send('configure', config.args, option_dict)
         self.recv('configure', 'done')
 
