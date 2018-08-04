@@ -2,7 +2,8 @@ import os
 import tempfile
 import subprocess
 
-import multiprocessing
+from multiprocessing.connection import Listener
+import platform
 import copy
 
 import logging
@@ -18,7 +19,8 @@ class InternalDeferredPlugin(object):
         self.ida_file = config.getoption('--ida-file')
         self.config = config
         self.session = None
-        self.remote_conn, self.conn = multiprocessing.Pipe()
+        self.listener = Listener()
+        self.conn = None
         self.logfile = tempfile.NamedTemporaryFile(delete=False)
         self.stop = False
 
@@ -26,7 +28,7 @@ class InternalDeferredPlugin(object):
         internal_script = os.path.join(os.path.dirname(__file__),
                                        "idaworker_main.py")
 
-        script_args = '{}'.format(self.remote_fd())
+        script_args = '{}'.format(self.listener.address)
         args = [
             self.ida_path,
             # autonomous mode. IDA will not display dialog boxes.
@@ -40,6 +42,11 @@ class InternalDeferredPlugin(object):
         log.debug("worker execution arguments: %s", args)
         self.proc = subprocess.Popen(args=args)
 
+        # accept a single connection
+        self.conn = self.listener.accept()
+        self.listener.close()
+        self.listener = None
+
     def ida_finish(self, interrupted):
         if interrupted:
             log.warning("Abrupt termination of external test session. worker "
@@ -51,9 +58,6 @@ class InternalDeferredPlugin(object):
 
     def __del__(self):
         log.info("%s", self.logfile.read())
-
-    def remote_fd(self):
-        return self.remote_conn.fileno()
 
     def command_ping(self):
         self.send('ping')

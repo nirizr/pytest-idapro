@@ -2,10 +2,7 @@ import ida_auto
 import idaapi
 import idc
 
-try:  # python3
-    from multiprocessing.connection import Connection
-except ImportError:  # python2
-    from _multiprocessing import Connection
+from multiprocessing.connection import Client
 
 import platform
 
@@ -19,10 +16,10 @@ log = logging.getLogger('pytest-idapro.internal.worker')
 
 
 class IdaWorker(object):
-    def __init__(self, conn_fd, *args, **kwargs):
+    def __init__(self, conn_addr, *args, **kwargs):
         super(IdaWorker, self).__init__(*args, **kwargs)
         self.daemon = True
-        self.conn = Connection(conn_fd)
+        self.conn = Client(conn_addr)
         self.stop = False
         self.pytest_config = None
         from PyQt5.QtWidgets import qApp
@@ -64,7 +61,6 @@ class IdaWorker(object):
 
     def command_dependencies(self, action):
         # test pytest is installed and return ready if it is
-        # TODO: improve this by checking & installing specified packages (and include cov)
         if action == "check":
             try:
                 import pytest
@@ -123,8 +119,6 @@ class IdaWorker(object):
         from _pytest.config import Config
         import plugin_worker
 
-        # TODO: undefined args are kinda silently ignored (i.e. --cov)
-        # it'll be better if they're actually validated
         self.pytest_config = Config.fromdictargs(option_dict, args)
         self.pytest_config.option.looponfail = False
         self.pytest_config.option.usepdb = False
@@ -156,8 +150,7 @@ def main():
     sys.path.append(os.path.dirname(__file__))
 
     # TODO: use idc.ARGV with some option parsing package
-
-    worker = IdaWorker(int(idc.ARGV[1]))
+    worker = IdaWorker(idc.ARGV[1])
     worker.run()
     idaapi.qexit(0)
 
