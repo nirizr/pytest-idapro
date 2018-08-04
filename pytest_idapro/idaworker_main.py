@@ -64,6 +64,7 @@ class IdaWorker(object):
 
     def command_dependencies(self, action):
         # test pytest is installed and return ready if it is
+        # TODO: improve this by checking & installing specified packages (and include cov)
         if action == "check":
             try:
                 import pytest
@@ -122,6 +123,8 @@ class IdaWorker(object):
         from _pytest.config import Config
         import plugin_worker
 
+        # TODO: undefined args are kinda silently ignored (i.e. --cov)
+        # it'll be better if they're actually validated
         self.pytest_config = Config.fromdictargs(option_dict, args)
         self.pytest_config.option.looponfail = False
         self.pytest_config.option.usepdb = False

@@ -104,7 +104,6 @@ class InternalDeferredPlugin(object):
                 raise RuntimeError("Invalid collect response received: "
                                    "{}".format(r))
 
-
     def command_runtest(self):
         self.recv('runtest', 'start')
         while True:
