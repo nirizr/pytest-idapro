@@ -62,11 +62,16 @@ class InternalDeferredPlugin(object):
         self.recv('pong')
 
     def command_dependencies(self):
-        self.send('dependencies', 'check')
+        plugins = []
+        if (hasattr(self.config.option, 'cov_source') and
+            self.config.option.cov_source):
+            plugins.append("pytest_cov")
+
+        self.send('dependencies', 'check', *plugins)
         if self.recv('dependencies') == ('ready',):
             return
 
-        self.send('dependencies', 'install')
+        self.send('dependencies', 'install', *plugins)
         self.recv('dependencies', 'ready')
 
     def command_autoanalysis_wait(self):

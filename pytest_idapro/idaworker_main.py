@@ -59,12 +59,15 @@ class IdaWorker(object):
         log.debug("Responding: {}".format(response))
         return response
 
-    def command_dependencies(self, action):
+    def command_dependencies(self, action, *plugins):
         # test pytest is installed and return ready if it is
         if action == "check":
             try:
                 import pytest
                 del pytest
+
+                for plugin in plugins:
+                    __import__(plugin)
                 return ('dependencies', 'ready')
             except ImportError:
                 pass
@@ -89,7 +92,7 @@ class IdaWorker(object):
 
             # ignoring installed six and upgrading is requried to avoid an osx
             # bug see https://github.com/pypa/pip/issues/3165 for more details
-            pip_command = ['install', 'pytest']
+            pip_command = ['install', 'pytest'] + list(plugins)
             if platform.system() == 'Darwin':
                 pip_command += ['--upgrade', '--user', '--ignore-installed',
                                 'six']
