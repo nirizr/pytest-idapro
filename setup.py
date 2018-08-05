@@ -11,14 +11,16 @@ setup(
     name='pytest-idapro',
     packages=find_packages(),
     version=__version__,
-    description=('A pytest plugin that mocks idapython modules to perform'
-                 'tests outside of IDA in an automated manner.'),
+    description=('A pytest plugin for idapython. Allows a pytest setup to run '
+                 'tests outside and inside IDA in an automated manner by '
+                 'runnig pytest inside IDA and by mocking idapython api'),
     author='Nir Izraeli',
     author_email='nirizr@gmail.com',
     maintainer='Nir Izraeli',
     maintainer_email='nirizr@gmail.com',
     keywords=['testing', 'pytest', 'idapython', 'idapro'],
-    install_requires=['pytest>=2.7', 'pytest-qt', 'pytest-xvfb'],
+    install_requires=['pytest>=2.7'],
+    extras_require={'mock': ['pytest-qt', 'pytest-xvfb']},
     url='https://github.com/nirizr/pytest-idapro',
     classifiers=[
         'Intended Audience :: Developers',
