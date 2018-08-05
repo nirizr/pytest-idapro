@@ -170,9 +170,16 @@ class InternalDeferredPlugin(object):
 
         return r[len(args):]
 
-    @staticmethod
-    def deserialize_report(reporttype, report):
+    def deserialize_report(self, reporttype, report):
         from _pytest.runner import TestReport, CollectReport
+        from pytest import Item
+        if 'result' in report:
+            newresult = []
+            for item in report['result']:
+                item_obj = Item(item['name'], config=self.config,
+                                session=self.session)
+                newresult.append(item_obj)
+            report['result'] = newresult
         if reporttype == "test":
             return TestReport(**report)
         elif reporttype == "collect":

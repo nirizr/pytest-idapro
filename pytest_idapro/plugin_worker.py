@@ -65,6 +65,7 @@ class WorkerPlugin(BasePlugin):
     @staticmethod
     def serialize_report(report):
         from py.path import local
+        from pytest import Item
 
         d = vars(report).copy()
         if hasattr(report.longrepr, "toterminal"):
@@ -76,6 +77,7 @@ class WorkerPlugin(BasePlugin):
             if isinstance(value, local):
                 d[name] = str(value)
             elif name == "result":
-                d["result"] = None
+                d['result'] = [{'name': item.name} for item in d['result']
+                               if isinstance(item, Item)]
 
         return d
