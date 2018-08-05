@@ -57,9 +57,6 @@ class InternalDeferredPlugin(object):
             self.proc.kill()
         self.stop = True
 
-    def __del__(self):
-        log.info("%s", self.logfile.read())
-
     def command_ping(self):
         self.send('ping')
         self.recv('pong')
