@@ -52,7 +52,8 @@ class InternalDeferredPlugin(object):
             log.warning("Abrupt termination of external test session. worker "
                         "log: %s", self.logfile.read())
         log.info("Stopping...")
-        if not self.proc.poll():
+        self.proc.poll()
+        if self.proc.returncode is None:
             self.proc.kill()
         self.stop = True
 
@@ -202,7 +203,7 @@ class InternalDeferredPlugin(object):
             self.recv('cmdline_main', 'finish')
             self.command_quit()
         except Exception:
-            log.exception("Exception encountered in runtestloop")
+            self.ida_finish(True)
             raise
 
         return True
