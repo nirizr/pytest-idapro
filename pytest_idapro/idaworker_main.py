@@ -120,12 +120,6 @@ class IdaWorker(object):
         import plugin_worker
 
         self.pytest_config = Config.fromdictargs(option_dict, args)
-        # TODO: clean this up
-        self.pytest_config.option.looponfail = False
-        self.pytest_config.option.usepdb = False
-        self.pytest_config.option.dist = "no"
-        self.pytest_config.option.distload = False
-        self.pytest_config.option.numprocesses = None
         self.pytest_config.args = args
 
         plugin = plugin_worker.WorkerPlugin(worker=self)

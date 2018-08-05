@@ -77,8 +77,11 @@ class InternalDeferredPlugin(object):
         option_dict = copy.deepcopy(vars(config.option))
 
         # block interfering plugins
-        option_dict["plugins"].append("no:cacheprovider")
-        option_dict["plugins"].append("no:pytest-qt")
+        option_dict['plugins'].append("no:cacheprovider")
+        option_dict['plugins'].append("no:pytest-qt")
+        option_dict['plugins'].append("no:xdist")
+        option_dict['plugins'].append("no:xvfb")
+        option_dict['usepdb'] = False
 
         # cleanup our own plugin configuration
         option_dict["plugins"].append("no:idapro")
