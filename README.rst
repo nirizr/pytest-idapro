@@ -3,7 +3,7 @@
 pytest-idapro
 =============
 
-a pytest module for The Interactive Disassembler and IDAPython, by executing an
+A pytest module for The Interactive Disassembler and IDAPython, by executing an
 internal pyetest runner inside IDA or mocking IDAPython functionality outside
 of IDA.
 
@@ -23,23 +23,25 @@ pytest-idapro can execute tests in two forms:
    IDA instance installed. This is primarily used in Continuous Integration
    environemnts where IDA installation is unavailable. This is the default mode.
    This is incomplete at the moment.
-2. By providing the `--ida` flag and an IDA executable, ipytest-idapro will
+2. By providing the :code:`--ida` flag and an IDA executable, ipytest-idapro will
    run a worker pytest instance inside IDA, execute all tests and collect
    results in main pytest process (this behavior is somewhat similar to the
-   xdist plugin)
+   xdist plugin). By defualt IDA will open use a temporary empty database file,
+   use the :code:`--ida-file`  flag to specify IDB or binary file for IDA to
+   analyze.
 
 Fixtures
 --------
 
-pytest `Fixtures <https://docs.pytest.org/en/latest/fixture.html>`_ are
+Pytest `Fixtures <https://docs.pytest.org/en/latest/fixture.html>`_ are
 exteremly powerful when writing tests, and pytest-idapro currently comes with
 two helpful fixtures:
 
-1. `idapro_plugin_entry` - pytest-idapro will automatically identify all ida
-   plugin entry points (functions named `PLUGIN_ENTRY`) across your code base
+1. :code:`idapro_plugin_entry` - pytest-idapro will automatically identify all ida
+   plugin entry points (functions named :code:`PLUGIN_ENTRY`) across your code base
    and let you easily writing tests for all plugin objects defined.
-2. `idapro_action_entry` - pytest-idapro will automatically identify all ida
-   actions (objects inheriting the `action_handler_t` class) throughout your
+2. :code:`idapro_action_entry` - pytest-idapro will automatically identify all ida
+   actions (objects inheriting the :code:`action_handler_t` class) throughout your
    code and again, let you easily write tests for all of your actions.
 
 .. |Build Status| image:: https://travis-ci.org/nirizr/pytest-idapro.svg?branch=master
