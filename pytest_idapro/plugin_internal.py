@@ -16,7 +16,9 @@ class InternalDeferredPlugin(object):
     def __init__(self, config):
         self.ida_path = config.getoption('--ida')
         self.ida_file = config.getoption('--ida-file')
+        self.record_file = config.getoption('--ida-record')
         self.keep_ida_running = config.getoption('--ida-keep')
+
         self.config = config
         self.session = None
         self.listener = Listener()
@@ -29,24 +31,40 @@ class InternalDeferredPlugin(object):
         internal_script = os.path.join(os.path.dirname(__file__),
                                        "main_idaworker.py")
 
-        script_args = '{}'.format(self.listener.address)
-        args = [
-            self.ida_path,
-            # autonomous mode. IDA will not display dialog boxes.
-            # Designed to be used together with -S switch.
-            "-A",
-            "-S\"{}\" {}".format(internal_script, script_args),
-            "-L{}".format(self.logfile.name),
-            # Load user-provided or start with an empty database
-            self.ida_file if self.ida_file else "-t"
-        ]
-        log.debug("worker execution arguments: %s", args)
-        self.proc = subprocess.Popen(args=args)
+        idapro_internal_dir = os.path.join(os.path.dirname(__file__),
+                                           "idapro_internal")
+        proxy_module_template = os.path.join(idapro_internal_dir,
+                                             "init.py.tmpl")
+        ida_python_init = os.path.join(os.path.dirname(self.ida_path),
+                                       "python", "init.py")
 
-        # accept a single connection
-        self.conn = self.listener.accept()
-        self.listener.close()
-        self.listener = None
+        if self.record_file:
+            self.install_proxy_module(idapro_internal_dir,
+                                      proxy_module_template, ida_python_init)
+
+        try:
+            script_args = '{}'.format(self.listener.address)
+            args = [
+                self.ida_path,
+                # autonomous mode. IDA will not display dialog boxes.
+                # Designed to be used together with -S switch.
+                "-A",
+                "-S\"{}\" {}".format(internal_script, script_args),
+                "-L{}".format(self.logfile.name),
+                # Load user-provided or start with an empty database
+                self.ida_file if self.ida_file else "-t"
+            ]
+            log.debug("worker execution arguments: %s", args)
+            self.proc = subprocess.Popen(args=args)
+
+            # accept a single connection
+            self.conn = self.listener.accept()
+            self.listener.close()
+            self.listener = None
+        finally:
+            if self.record_file:
+                self.uninstall_proxy_module(proxy_module_template,
+                                            ida_python_init)
 
     def ida_finish(self, interrupted):
         self.stop = True
@@ -70,6 +88,28 @@ class InternalDeferredPlugin(object):
 
         log.info("Stopping...")
         self.proc.kill()
+
+    @staticmethod
+    def install_proxy_module(idapro_internal_dir, proxy_module_template,
+                             ida_python_init):
+        with open(proxy_module_template, 'r') as fh:
+            lines = [line.format(idapro_internal_dir=idapro_internal_dir)
+                     for line in fh.readlines()]
+        with open(ida_python_init, 'r') as fh:
+            lines += fh.readlines()
+        with open(ida_python_init, 'w') as fh:
+            fh.writelines(lines)
+
+    @staticmethod
+    def uninstall_proxy_module(proxy_module_template, ida_python_init):
+        with open(proxy_module_template, 'r') as fh:
+            lastline = fh.readlines()[-1]
+        lines = []
+        with open(ida_python_init, 'r') as fh:
+            for line in fh.readlines():
+                lines = [] if line == lastline else (lines + [line])
+        with open(ida_python_init, 'w') as fh:
+            fh.writelines(lines)
 
     def command_ping(self):
         self.send('ping')
@@ -106,6 +146,8 @@ class InternalDeferredPlugin(object):
         option_dict["plugins"].append("no:idapro")
         del option_dict['ida']
         del option_dict['ida_file']
+        del option_dict['ida_record']
+        del option_dict['ida_replay']
 
         if platform.system() == "Windows":
             # remove capturing, this doesn't properly work in windows
@@ -182,6 +224,11 @@ class InternalDeferredPlugin(object):
     def command_quit(self):
         self.send('quit', not self.keep_ida_running)
         self.recv('quitting')
+
+    def command_save_records(self):
+        fmt = os.path.splitext(self.record_file)[1][1:]
+        self.send('save_records', self.record_file, fmt)
+        self.recv('save_records', 'done')
 
     def send(self, *s):
         log.debug("Sending: %s", s)
@@ -261,6 +308,10 @@ class InternalDeferredPlugin(object):
             self.command_report_terminalsummary()
 
             self.recv('cmdline_main', 'finish')
+
+            if self.record_file:
+                self.command_save_records()
+
             self.command_quit()
         except Exception:
             self.ida_finish(True)
