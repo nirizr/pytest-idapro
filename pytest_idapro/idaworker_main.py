@@ -4,13 +4,12 @@ import idc
 import os
 import sys
 
-from .idapro_internal import idaworker
+sys.path.append(os.path.dirname(__file__))
+
+from idapro_internal import idaworker  # noqa: E402
 
 
 def main():
-    sys.path.append(os.getcwd())
-    sys.path.append(os.path.dirname(__file__))
-
     # TODO: use idc.ARGV with some option parsing package
     worker = idaworker.IdaWorker(idc.ARGV[1])
     worker.run()
