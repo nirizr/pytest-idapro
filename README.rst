@@ -4,8 +4,8 @@ pytest-idapro
 =============
 
 A pytest module for The Interactive Disassembler and IDAPython, by executing an
-internal pyetest runner inside IDA or mocking IDAPython functionality outside
-of IDA.
+internal pytest runner inside IDA or mocking IDAPython functionality outside of
+IDA.
 
 Motivation
 ----------
