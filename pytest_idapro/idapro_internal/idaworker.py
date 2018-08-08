@@ -4,7 +4,7 @@ from multiprocessing.connection import Client
 import platform
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig()
 log = logging.getLogger('pytest-idapro.internal.worker')
 
 
