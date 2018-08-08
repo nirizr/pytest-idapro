@@ -1,12 +1,10 @@
 import idaapi
 import idc
 
-import os
-import sys
-
-sys.path.append(os.path.dirname(__file__))
-
-from idapro_internal import idaworker  # noqa: E402
+try:
+    from idapro_internal import idaworker
+except ImportError:
+    from .idapro_internal import idaworker
 
 
 def main():

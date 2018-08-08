@@ -25,7 +25,7 @@ class InternalDeferredPlugin(object):
 
     def ida_start(self):
         internal_script = os.path.join(os.path.dirname(__file__),
-                                       "idaworker_main.py")
+                                       "main_idaworker.py")
 
         script_args = '{}'.format(self.listener.address)
         args = [
