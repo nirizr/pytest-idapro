@@ -21,6 +21,7 @@ class InternalDeferredPlugin(object):
         self.listener = Listener()
         self.conn = None
         self.logfile = tempfile.NamedTemporaryFile(delete=False)
+        self.proc = None
         self.stop = False
 
     def ida_start(self):
@@ -51,9 +52,10 @@ class InternalDeferredPlugin(object):
             log.warning("Abrupt termination of external test session. worker "
                         "log: %s", self.logfile.read())
         log.info("Stopping...")
-        self.proc.poll()
-        if self.proc.returncode is None:
-            self.proc.kill()
+        if self.proc:
+            self.proc.poll()
+            if self.proc.returncode is None:
+                self.proc.kill()
         self.stop = True
 
     def command_ping(self):
