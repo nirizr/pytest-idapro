@@ -129,7 +129,6 @@ class InternalDeferredPlugin(object):
                                    "{}".format(r))
 
     def command_runtest(self):
-        self.recv('runtest', 'start')
         while True:
             r = self.recv('runtest')
             if r[0] == 'logstart':
@@ -205,10 +204,16 @@ class InternalDeferredPlugin(object):
             self.command_cmdline_main()
 
             self.command_collect()
+            response = self.recv()
 
-            self.command_runtest()
+            if response == ('runtest', 'start'):
+                self.command_runtest()
+                exitstatus = self.recv('session', 'finish')
+            elif response[:2] == ('session', 'finish'):
+                exitstatus = response[2]
+            else:
+                raise RuntimeError("Unexpected response: {}".format(response))
 
-            exitstatus = self.recv('session', 'finish')
             # TODO: The same exit status will be derived by pytest. might be
             # useful to make sure they match
             del exitstatus
