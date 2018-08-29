@@ -10,8 +10,9 @@ except ImportError:
 def main():
     # TODO: use idc.ARGV with some option parsing package
     worker = idaworker.IdaWorker(idc.ARGV[1])
-    worker.run()
-    idaapi.qexit(0)
+    should_quit = worker.run()
+    if should_quit:
+        idaapi.qexit(0)
 
 
 if __name__ == '__main__':

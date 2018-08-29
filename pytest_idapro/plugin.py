@@ -13,12 +13,16 @@ def pytest_addoption(parser):
                                         "format. If no file is provided, an "
                                         "empty database will be automatically "
                                         "loaded.")
+    group._addoption('--ida-keep', action="store_true", default=False,
+                     help="Keep IDA instance running instead of terminating "
+                          "it. Only acceptable with --ida.")
 
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_cmdline_main(config):
     ida_path = config.getoption('--ida')
     ida_file = config.getoption('--ida-file')
+    ida_keep = config.getoption('--ida-keep')
 
     # force removal of plugins interfering / incompatible with running
     # internally
@@ -34,6 +38,10 @@ def pytest_cmdline_main(config):
                                 "well")
     if ida_file and not os.path.isfile(ida_file):
         raise pytest.UsageError("--ida-file must point to an IDA file.")
+
+    if ida_keep and not ida_path:
+        raise pytest.UsageError("--ida-keep is only meaningful when --ida is "
+                                "also provided.")
     # TODO: free text ida args?
 
 

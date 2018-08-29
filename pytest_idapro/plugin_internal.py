@@ -16,6 +16,7 @@ class InternalDeferredPlugin(object):
     def __init__(self, config):
         self.ida_path = config.getoption('--ida')
         self.ida_file = config.getoption('--ida-file')
+        self.keep_ida_running = config.getoption('--ida-keep')
         self.config = config
         self.session = None
         self.listener = Listener()
@@ -48,15 +49,27 @@ class InternalDeferredPlugin(object):
         self.listener = None
 
     def ida_finish(self, interrupted):
+        self.stop = True
+
         if interrupted:
             log.warning("Abrupt termination of external test session. worker "
                         "log: %s", self.logfile.read())
+
+        if not self.proc:
+            return
+
+        # calling poll to poll execution status and returncode
+        self.proc.poll()
+        if self.proc.returncode is not None:
+            return
+
+        if self.keep_ida_running:
+            log.info("Avoiding forcefully killing ida because requested to "
+                     "keep it running")
+            return
+
         log.info("Stopping...")
-        if self.proc:
-            self.proc.poll()
-            if self.proc.returncode is None:
-                self.proc.kill()
-        self.stop = True
+        self.proc.kill()
 
     def command_ping(self):
         self.send('ping')
@@ -149,7 +162,7 @@ class InternalDeferredPlugin(object):
                                    "{}".format(r))
 
     def command_quit(self):
-        self.send('quit')
+        self.send('quit', not self.keep_ida_running)
         self.recv('quitting')
 
     def send(self, *s):
