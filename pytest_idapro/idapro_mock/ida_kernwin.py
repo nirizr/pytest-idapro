@@ -89,3 +89,13 @@ class PluginForm(QtWidgets.QDialog, MockObject):
         # widget requires calling IDA API, however while mocking PluginForm, we
         # made it a sinlge object, so that API returns it's self object
         return self
+
+
+# Just let this be called and do nothing, there's no need to execute or return
+def request_refresh(mask, cnd=True):
+    pass
+
+
+# Just let this be called and do nothing, there's no need to execute or return
+def refresh_idaview_anyway():
+    pass
