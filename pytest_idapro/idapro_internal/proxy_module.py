@@ -185,17 +185,22 @@ class AbstractRecord(object):
     __slots__ = ['__subject__', '__records__', '__subject_name__',
                  '__value_type__']
 
-    # TODO: delete??
-    # TODO: this can even fuck up class records
     def __call__(self, *args, **kwargs):
-        safe_print("abstractrecord call")
-        safe_print(self.__value_type__)
-        safe_print(self.__subject__.__metaclass__)
-        safe_print(self.__metaclass__)
-        retval = self.__subject__(*args, **kwargs)
-        # TODO: shoudl serialize retval into calldesc and create proxy object
-        calldesc = {'args': map(repr, args), 'kwargs': kwargs,
-                    'retval': repr(retval)}
+        # TODO: should also record & replay exceptions within functions
+        safe_print("function call", self, args, kwargs)
+        new_args = []
+        for a in args:
+            safe_print("function arg", a, type(a), hasattr(a, '__subject__'))
+            if hasattr(a, '__subject__'):
+                new_args.append(a.__subject__)
+            else:
+                new_args.append(a)
+        original_retval = self.__subject__(*new_args, **kwargs)
+        safe_print("function call ret", original_retval)
+        calldesc = {'args': map(repr, new_args), 'kwargs': str(kwargs)}
+        d = {}
+        retval = record_factory('retval', original_retval, d)
+        calldesc['retval'] = d['retval']
         self.__records__.setdefault('data', []).append(calldesc)
         return retval
 
@@ -317,25 +322,6 @@ class ModuleRecord(AbstractRecord):
 
 class FunctionRecord(AbstractRecord):
     __value_type__ = "function"
-
-    def __call__(self, *args, **kwargs):
-        # TODO: should also record & replay exceptions within functions
-        safe_print("function call", self, args, kwargs)
-        new_args = []
-        for a in args:
-            safe_print("function arg", type(a), hasattr(a, '__subject__'))
-            if hasattr(a, '__subject__'):
-                new_args.append(a.__subject__)
-            else:
-                new_args.append(a)
-        original_retval = self.__subject__(*new_args, **kwargs)
-        safe_print("function call ret", original_retval)
-        calldesc = {'args': map(repr, new_args), 'kwargs': str(kwargs)}
-        d = {}
-        retval = record_factory('retval', original_retval, d)
-        calldesc['retval'] = str(d['retval'])
-        self.__records__.setdefault('data', []).append(calldesc)
-        return retval
 
 
 class ClassRecord(AbstractRecord):
