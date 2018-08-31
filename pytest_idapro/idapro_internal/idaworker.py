@@ -14,6 +14,7 @@ class IdaWorker(object):
         self.daemon = True
         self.conn = Client(conn_addr)
         self.stop = False
+        self.quit_ida = True
         self.pytest_config = None
         from PyQt5.QtWidgets import qApp
         self.qapp = qApp
@@ -29,6 +30,9 @@ class IdaWorker(object):
             log.exception("Runtime error encountered during message handling")
         except EOFError:
             log.info("remote connection closed abruptly, terminating.")
+            self.quit_ida = True
+
+        return self.quit_ida
 
     def recv(self):
         while not self.stop:
@@ -132,6 +136,7 @@ class IdaWorker(object):
     def command_ping():
         return ('pong',)
 
-    def command_quit(self):
+    def command_quit(self, quit_ida):
         self.stop = True
+        self.quit_ida = quit_ida
         return ("quitting",)
