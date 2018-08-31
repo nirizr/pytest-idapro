@@ -83,13 +83,7 @@ def init_record(record, subject, records, name, value_type=None):
     return record
 
 
-
 def record_factory(name, value, parent_record):
-    #if inspect.isclass(value) and issubclass(value, AbstractRecord):
-    #    safe_print("Skipping record class")
-    #    value.__subject__ = value
-    #    value.__subject__ = value
-    #    return value
     if isinstance(value, AbstractRecord):
         safe_print("Skipping record object", value)
         return value
@@ -116,20 +110,23 @@ def record_factory(name, value, parent_record):
             if isinstance(value, AbstractRecord):
                 safe_print("INSTANCE")
                 return value
+
             class ProxyClass(value):
                 def __new__(cls, *args, **kwargs):
                     safe_print("!!! class record newed", cls, args, kwargs)
                     r = super(ProxyClass, cls).__new__(cls, *args, **kwargs)
 
                     # __init__ method is not called by python if __new__
-                    # returns an object that is not an instance of original
+                    # returns an object that is not an instance of the same
+                    # class type. We therefore have to call __init__ ourselves
+                    # before returning a ClassRecord
                     safe_print("class obj type", type(r))
                     if hasattr(cls, '__init__'):
                         cls.__init__(r, *args, **kwargs)
 
-                    #super(ProxyClass, r).__init__(*args, **kwargs)
                     safe_print("orig class result", r.__class__)
-                    r = init_record(ClassRecord(), r, parent_record, "classinstance", "dummyname")
+                    r = init_record(ClassRecord(), r, parent_record,
+                                    "classinstance", "dummyname")
                     safe_print("class result", r.__class__)
 
                     safe_print("type r", type(r))
@@ -150,11 +147,8 @@ def record_factory(name, value, parent_record):
                 def __call__(self, *args, **kwargs):
                     safe_print("!!! class record called", self, args, kwargs)
                     return super(ProxyClass, self).__call__(*args, **kwargs)
-                pass
             safe_print("class mro", ProxyClass.__mro__)
             return init_record(ProxyClass, value, parent_record, name, 'class')
-            # value = AbstractRecord(value, parent_record)
-        # value = AbstractRecord(value, parent_record, value_type='class')
     elif isinstance(value, types.ModuleType):
         if is_idamodule(value.__name__):
             return init_record(ModuleRecord(), value, parent_record, name)
@@ -173,7 +167,6 @@ def record_factory(name, value, parent_record):
         value = init_record(AbstractRecord(), value, parent_record, name,
                             'unknown')
         safe_print(repr(value))
-        # raise ValueError()
 
     return value
 
@@ -211,7 +204,9 @@ class AbstractRecord(object):
 
         value = getattr(self.__subject__, attr)
         safe_print("getattr sub", self.__subject__)
-        safe_print("Getattr called", value, attr, type(value), self.__subject__, self.__subject_name__, self.__value_type__)
+        safe_print("Getattr called", value, attr, type(value),
+                   self.__subject__, self.__subject_name__,
+                   self.__value_type__)
         processed_value = record_factory(attr, value, self.__records__)
         return processed_value
 
