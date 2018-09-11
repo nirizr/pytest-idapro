@@ -125,8 +125,11 @@ def record_factory(name, value, parent_record):
                         cls.__init__(r, *args, **kwargs)
 
                     safe_print("orig class result", r.__class__)
+                    # TODO: class instances should have differing names
+                    # perhaps? we may need to somehow seperate different
+                    # instances of the same class
                     r = init_record(ClassRecord(), r, parent_record,
-                                    "classinstance", "dummyname")
+                                    value.__name__, "class")
                     safe_print("class result", r.__class__)
 
                     safe_print("type r", type(r))
