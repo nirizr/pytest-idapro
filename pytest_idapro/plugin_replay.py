@@ -37,7 +37,7 @@ class ReplayDeferredPlugin(MockDeferredPlugin):
                 t = {'ida_area': 'ida_range', 'ida_ints': 'ida_bytes',
                      'ida_queue': 'ida_problems', 'ida_srarea': 'ida_segregs'}
                 module_record = self.records[t[module_name]]
-            module = ModuleReplay(module_name, module_record)
+            module = init_replay(ModuleReplay(), module_name, module_record)
             sys.modules[module_name] = module
 
     @staticmethod
@@ -46,29 +46,37 @@ class ReplayDeferredPlugin(MockDeferredPlugin):
             del sys.modules[module]
 
 
+def init_replay(replay, object_name, records):
+    replay.__object_name__ = object_name
+    replay.__records__ = records
+
+    return replay
+
+
 def replay_factory(name, records):
     record = records[name]
     value_type = record['value_type']
     if value_type == 'value':
         return record['data']
     elif value_type == 'module':
-        return AbstractReplay(name, record['data'])
+        return init_replay(AbstractReplay(), name, record['data'])
     elif value_type == 'class':
-        return AbstractReplay
+        class ClassReplay(AbstractReplay):
+            def __new__(cls, *args, **kwargs):
+                print("classreplay.__new__", cls, args, kwargs)
+                return super(ClassReplay, cls).__new__(cls, *args, **kwargs)
+
+        return init_replay(ClassReplay, name, record)
     elif value_type == 'function':
-        return FunctionReplay(name, record)
+        return init_replay(FunctionReplay(), name, record)
     elif value_type == 'proxy':
-        return AbstractReplay(name, record['data'])
+        return init_replay(AbstractReplay(), name, record['data'])
     else:
         raise ValueError("Unhandled value type", name, record)
 
 
 class AbstractReplay(object):
     __slots__ = ["__object_name__", "__records__"]
-
-    def __init__(self, object_name, records):
-        self.__object_name__ = object_name
-        self.__records__ = records
 
     def __getattribute__(self, attr, oga=object.__getattribute__):
         object_name = oga(self, '__object_name__')
@@ -78,11 +86,21 @@ class AbstractReplay(object):
         elif attr == '__records__':
             return records
 
+        print("getattr called for {} in {} with {}".format(attr, object_name,
+                                                           records.get(attr,
+                                                                       None)))
+
+        # TODO: this should probably done better, really proxy those (and
+        # other) values.
+        if attr == "__bases__":
+            return tuple()
+            # return oga(self, '__class__').__bases__
+        if attr == '__subclasses__':
+            def get_subclasses():
+                return oga(self, '__class__').__subclasses__
+            return get_subclasses
         if attr not in records:
             raise ValueError("Missing attribute", attr, object_name, records)
-
-        print("getattr called for {} in {} with {}".format(attr, object_name,
-                                                           records[attr]))
 
         return replay_factory(attr, records)
 
