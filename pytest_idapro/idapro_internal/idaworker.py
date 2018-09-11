@@ -146,6 +146,8 @@ class IdaWorker(object):
         # we have to fetch proxy_module manually because of how it was loaded
         # from ida's python/init.py
         import sys
+        if 'proxy_module' not in sys.modules:
+            return ('save_records', 'failed')
         proxy_module = sys.modules['proxy_module']
 
         if dest_format == "json":
