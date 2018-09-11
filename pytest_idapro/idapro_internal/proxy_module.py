@@ -65,6 +65,18 @@ except NameError:
     base_types += (type(None),)
 
 
+def serialize_data(o):
+    if isinstance(o, dict):
+        return {k: serialize_data(v) for k, v in o.items()}
+    elif isinstance(o, list):
+        return [serialize_data(v) for v in o]
+    elif isinstance(o, tuple):
+        return tuple([serialize_data(v) for v in o])
+    elif isinstance(o, base_types):
+        return o
+    raise RuntimeError("Unsupported serialize", type(o), o)
+
+
 def init_record(record, subject, records, name, value_type=None):
     record.__subject__ = subject
     record.__subject_name__ = name
@@ -188,15 +200,18 @@ class AbstractRecord(object):
         for a in args:
             safe_print("function arg", a, type(a), hasattr(a, '__subject__'))
             if hasattr(a, '__subject__'):
+                safe_print("function new arg", a, a.__subject__)
                 new_args.append(a.__subject__)
             else:
                 new_args.append(a)
+        safe_print("function call new args", self, new_args, kwargs)
         original_retval = self.__subject__(*new_args, **kwargs)
         safe_print("function call ret", original_retval)
-        calldesc = {'args': map(repr, new_args), 'kwargs': str(kwargs)}
+        calldesc = {'args': serialize_data(new_args),
+                    'kwargs': serialize_data(kwargs)}
         d = {}
         retval = record_factory('retval', original_retval, d)
-        calldesc['retval'] = d['retval']
+        calldesc['retval'] = serialize_data(d['retval'])
         self.__records__.setdefault('data', []).append(calldesc)
         return retval
 
