@@ -65,6 +65,22 @@ except NameError:
     base_types += (type(None),)
 
 
+def strip_proxies(o):
+    if isinstance(o, dict):
+        return {k: strip_proxies(v) for k, v in o.items()}
+    elif isinstance(o, list):
+        return [strip_proxies(v) for v in o]
+    elif isinstance(o, tuple):
+        return tuple([strip_proxies(v) for v in o])
+    elif hasattr(o, '__subject__') or type(o).__name__ == 'ProxyClass':
+        safe_print("object strip_proxies", o, o.__subject__, type(o), type(o.__subject__))
+        return o.__subject__
+    elif isinstance(o, base_types):
+        return o
+    safe_print("default strip_proxies", type(o), o, type(o).__name__)
+    return o
+
+
 def serialize_data(o):
     if isinstance(o, dict):
         return {k: serialize_data(v) for k, v in o.items()}
@@ -72,9 +88,17 @@ def serialize_data(o):
         return [serialize_data(v) for v in o]
     elif isinstance(o, tuple):
         return tuple([serialize_data(v) for v in o])
+    elif inspect.isclass(o) and issubclass(o, object):
+        return repr(o)
+    elif inspect.isclass(o):
+        return repr(o)
+    elif inspect.isfunction(o):
+        return repr(o)
     elif isinstance(o, base_types):
         return o
-    raise RuntimeError("Unsupported serialize", type(o), o)
+    return repr(o)
+    # TODO: if ProxyClass reached here, it should've need stipped in __call__
+    raise RuntimeError("Unsupported serialize", type(o), o, o.__class__.__name__, type(o).__name__)
 
 
 def init_record(record, subject, records, name, value_type=None):
@@ -159,6 +183,7 @@ def record_factory(name, value, parent_record):
                     safe_print("init called")
                     super(ProxyClass, self).__init__(*args, **kwargs)
 
+                # TODO: should this be logged??
                 def __call__(self, *args, **kwargs):
                     safe_print("!!! class record called", self, args, kwargs)
                     return super(ProxyClass, self).__call__(*args, **kwargs)
@@ -196,18 +221,12 @@ class AbstractRecord(object):
     def __call__(self, *args, **kwargs):
         # TODO: should also record & replay exceptions within functions
         safe_print("function call", self, args, kwargs)
-        new_args = []
-        for a in args:
-            safe_print("function arg", a, type(a), hasattr(a, '__subject__'))
-            if hasattr(a, '__subject__'):
-                safe_print("function new arg", a, a.__subject__)
-                new_args.append(a.__subject__)
-            else:
-                new_args.append(a)
-        safe_print("function call new args", self, new_args, kwargs)
-        original_retval = self.__subject__(*new_args, **kwargs)
+        args = strip_proxies(args)
+        kwargs = strip_proxies(kwargs)
+        safe_print("function call clean args", self, args, kwargs)
+        original_retval = self.__subject__(*args, **kwargs)
         safe_print("function call ret", original_retval)
-        calldesc = {'args': serialize_data(new_args),
+        calldesc = {'args': serialize_data(args),
                     'kwargs': serialize_data(kwargs)}
         d = {}
         retval = record_factory('retval', original_retval, d)
