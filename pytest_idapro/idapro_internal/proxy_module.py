@@ -218,6 +218,9 @@ class AbstractRecord(object):
     __slots__ = ['__subject__', '__records__', '__subject_name__',
                  '__value_type__']
 
+    # TODO: handle callback registrations properly, i.e. execute_sync
+    # This should also include recording the input arguments passed
+    # to the callbacks themselves (probably by proxying the callback
     def __call__(self, *args, **kwargs):
         # TODO: should also record & replay exceptions within functions
         safe_print("function call", self, args, kwargs)
