@@ -118,6 +118,15 @@ class InternalDeferredPlugin(object):
         self.send('cmdline_main')
         self.recv('cmdline_main', 'start')
 
+    def command_session_start(self):
+        self.recv('session', 'start')
+        # we do not start the session twice
+        # self.config.hook.pytest_sessionstart(session=self.session)
+
+    def command_report_header(self):
+        startdir, = self.recv('report', 'header')
+        self.config.hook.pytest_report_header(config=self.config, startdir=startdir)
+
     def command_collect(self):
         self.recv('collection', 'start')
         self.config.hook.pytest_collectstart()
@@ -215,6 +224,9 @@ class InternalDeferredPlugin(object):
             self.command_autoanalysis_wait()
             self.command_configure(self.config)
             self.command_cmdline_main()
+
+            self.command_session_start()
+            self.command_report_header()
 
             self.command_collect()
             response = self.recv()

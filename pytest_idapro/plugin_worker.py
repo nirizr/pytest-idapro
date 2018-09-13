@@ -61,11 +61,9 @@ class WorkerPlugin(BasePlugin):
     def pytest_deselected(self, items):
         self.worker.send('deselected', items)
 
-    # unsupported
     def pytest_sessionstart(self, session):
         self.worker.send('session', 'start')
 
-    # unsupported
     def pytest_report_header(self, config, startdir):
         self.worker.send('report', 'header', startdir)
 
