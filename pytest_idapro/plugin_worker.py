@@ -49,8 +49,29 @@ class WorkerPlugin(BasePlugin):
         serialized_report = self.serialize_report(report)
         self.worker.send('runtest', 'logreport', serialized_report)
 
+    # unsupported
+    def pytest_internalerror(self, excrepr):
+        self.worker.send('internalerr', excrepr)
+
+    # unsupported
     def pytest_logwarning(self, message, code, nodeid, fslocation):
-        pass
+        self.worker.send('logwarning', message, code, nodeid, fslocation)
+
+    # unsupported
+    def pytest_deselected(self, items):
+        self.worker.send('deselected', items)
+
+    # unsupported
+    def pytest_sessionstart(self, session):
+        self.worker.send('session', 'start')
+
+    # unsupported
+    def pytest_report_header(self, config, startdir):
+        self.worker.send('report', 'header', startdir)
+
+    # unsupported
+    def pytest_terminal_summary(self, terminalreporter):
+        self.worker.send('report', 'terminalsummary')
 
     @pytest.hookimpl(hookwrapper=True)
     def pytest_sessionfinish(self, exitstatus):
