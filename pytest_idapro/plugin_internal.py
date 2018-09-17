@@ -147,6 +147,8 @@ class InternalDeferredPlugin(object):
                     session=self.session,
                     config=self.config,
                     items=r[1])
+            elif r[0] == 'deselected':
+                self.config.hook.pytest_deselected(items=r[1])
             else:
                 raise RuntimeError("Invalid collect response received: "
                                    "{}".format(r))
