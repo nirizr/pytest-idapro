@@ -55,8 +55,8 @@ class WorkerPlugin(BasePlugin):
         self.worker.send('runtest', 'logreport', serialized_report)
 
     # unsupported
-    def pytest_internalerror(self, excrepr):
-        self.worker.send('internalerr', excrepr)
+    def pytest_internalerror(self, excrepr, excinfo):
+        self.worker.send('internalerr', excrepr, excinfo)
 
     # unsupported
     def pytest_logwarning(self, message, code, nodeid, fslocation):
