@@ -25,7 +25,12 @@ class WorkerPlugin(BasePlugin):
 
     def pytest_collection_modifyitems(self, items):
         # TODO: cannot serialize items, passing an empty list for now
+        # items = [i.nodeid for i in items]
         self.worker.send('collection', 'modifyitems', [])
+
+    def pytest_deselected(self, items):
+        items = [i.nodeid for i in items]
+        self.worker.send('collection', 'deselected', items)
 
     def pytest_collection_finish(self, session):
         items = [i.nodeid for i in session.items]
@@ -49,8 +54,22 @@ class WorkerPlugin(BasePlugin):
         serialized_report = self.serialize_report(report)
         self.worker.send('runtest', 'logreport', serialized_report)
 
+    # unsupported
+    def pytest_internalerror(self, excrepr, excinfo):
+        self.worker.send('internalerr', excrepr, excinfo)
+
+    # unsupported
     def pytest_logwarning(self, message, code, nodeid, fslocation):
-        pass
+        self.worker.send('logwarning', message, code, nodeid, fslocation)
+
+    def pytest_sessionstart(self, session):
+        self.worker.send('session', 'start')
+
+    def pytest_report_header(self, config, startdir):
+        self.worker.send('report', 'header', startdir)
+
+    def pytest_terminal_summary(self, terminalreporter):
+        self.worker.send('report', 'terminalsummary')
 
     @pytest.hookimpl(hookwrapper=True)
     def pytest_sessionfinish(self, exitstatus):

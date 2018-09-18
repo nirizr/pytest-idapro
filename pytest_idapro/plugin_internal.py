@@ -118,6 +118,16 @@ class InternalDeferredPlugin(object):
         self.send('cmdline_main')
         self.recv('cmdline_main', 'start')
 
+    def command_session_start(self):
+        self.recv('session', 'start')
+        # we do not start the session twice
+        # self.config.hook.pytest_sessionstart(session=self.session)
+
+    def command_report_header(self):
+        startdir, = self.recv('report', 'header')
+        self.config.hook.pytest_report_header(config=self.config,
+                                              startdir=startdir)
+
     def command_collect(self):
         self.recv('collection', 'start')
         self.config.hook.pytest_collectstart()
@@ -137,6 +147,8 @@ class InternalDeferredPlugin(object):
                     session=self.session,
                     config=self.config,
                     items=r[1])
+            elif r[0] == 'deselected':
+                self.config.hook.pytest_deselected(items=r[1])
             else:
                 raise RuntimeError("Invalid collect response received: "
                                    "{}".format(r))
@@ -160,6 +172,12 @@ class InternalDeferredPlugin(object):
             else:
                 raise RuntimeError("Invalid runtest response received: "
                                    "{}".format(r))
+
+    def command_report_terminalsummary(self):
+        exitstatus = self.recv('report', 'terminalsummary')
+        tr = self.config.pluginmanager.get_plugin('terminalreporter')
+        self.config.hook.pytest_terminal_summary(terminalreporter=tr,
+                                                 exitstatus=exitstatus)
 
     def command_quit(self):
         self.send('quit', not self.keep_ida_running)
@@ -216,6 +234,9 @@ class InternalDeferredPlugin(object):
             self.command_configure(self.config)
             self.command_cmdline_main()
 
+            self.command_session_start()
+            self.command_report_header()
+
             self.command_collect()
             response = self.recv()
 
@@ -230,6 +251,8 @@ class InternalDeferredPlugin(object):
             # TODO: The same exit status will be derived by pytest. might be
             # useful to make sure they match
             del exitstatus
+
+            self.command_report_terminalsummary()
 
             self.recv('cmdline_main', 'finish')
             self.command_quit()
