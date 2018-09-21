@@ -1,5 +1,6 @@
 import pickle
 import json
+import inspect
 
 import sys
 
@@ -127,7 +128,16 @@ class FunctionReplay(AbstractReplay):
 
         if 'callback' in data and data['callback']:
             # TODO: handle callbacks (by calling those functions)
-            pass
+            for arg in args + tuple(kwargs.values()):
+                # TODO: improve logic over just picking the first available
+                if not inspect.isfunction(arg):
+                    continue
+                arg_data = data['callback'].get(arg.__name__, None)['data'][0]
+                if not arg_data:
+                    continue
+                print("calling {} with {}".format(arg, arg_data))
+                arg(*arg_data['args'], **arg_data['kwargs'])
+                # TODO: validate return value is correct
 
         print(self.__records__)
         return replay_factory('retval', data)
