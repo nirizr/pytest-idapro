@@ -118,10 +118,14 @@ def serialize_data(o):
 def init_record(record, subject, records, name, value_type=None):
     record.__subject__ = subject
     record.__subject_name__ = name
+    # TODO: should we make value_type mandatory?
     if value_type:
         record.__value_type__ = value_type
 
-    if name in records:
+    if name is None:
+        record.__records__ = {'value_type': record.__value_type__}
+        records.setdefault('data', []).append(record.__records__)
+    elif name in records:
         record.__records__ = records[name]
         if record.__records__['value_type'] != record.__value_type__:
             raise RuntimeError("Value types mismatch!", name, records,
@@ -169,17 +173,14 @@ def record_factory(name, value, parent_record):
                     # __init__ method is not called by python if __new__
                     # returns an object that is not an instance of the same
                     # class type. We therefore have to call __init__ ourselves
-                    # before returning a ClassRecord
+                    # before returning a InstanceRecord
                     safe_print("class obj type", type(r))
                     if hasattr(cls, '__init__'):
                         cls.__init__(r, *args, **kwargs)
 
                     safe_print("orig class result", r.__class__)
-                    # TODO: class instances should have differing names
-                    # perhaps? we may need to somehow seperate different
-                    # instances of the same class
-                    r = init_record(ClassRecord(), r, parent_record,
-                                    value.__name__, "class")
+                    r = init_record(InstanceRecord(), r, parent_record[name],
+                                    None, "instance")
                     safe_print("class result", r.__class__)
 
                     safe_print("type r", type(r))
@@ -255,7 +256,12 @@ class AbstractRecord(object):
             safe_print(traceback.format_exc())
             raise
         safe_print("function call ret", original_retval)
-        retval = record_factory('retval', original_retval, calldesc)
+        # TODO: to keep any retval related recorded data we should not pass
+        # a temp dict to this record_factory. instead, we should move
+        # serialize_data to a json serializaion encode/decode class.
+        td = {}
+        retval = record_factory('retval', original_retval, td)
+        calldesc['retval'] = serialize_data(td['retval'])
         return retval
 
     def __getattribute__(self, attr, oga=object.__getattribute__):
@@ -380,11 +386,11 @@ class FunctionRecord(AbstractRecord):
     __value_type__ = "function"
 
 
-class ClassRecord(AbstractRecord):
+class InstanceRecord(AbstractRecord):
     def __getattribute__(self, attr, oga=object.__getattribute__):
         try:
             safe_print("classrecord getattr", attr)
-            return super(ClassRecord, self).__getattribute__(attr, oga)
+            return super(InstanceRecord, self).__getattribute__(attr, oga)
         except AttributeError:
             return oga(self, attr)
 
