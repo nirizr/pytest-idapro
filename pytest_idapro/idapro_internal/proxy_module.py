@@ -111,8 +111,8 @@ def serialize_data(o):
         return o
     return repr(o)
     # TODO: if ProxyClass reached here, it should've need stipped in __call__
-    raise RuntimeError("Unsupported serialize", type(o), o,
-                       o.__class__.__name__, type(o).__name__)
+    # raise RuntimeError("Unsupported serialize", type(o), o,
+    #                    o.__class__.__name__, type(o).__name__)
 
 
 def init_record(record, subject, records, name, value_type=None):
