@@ -127,7 +127,6 @@ class FunctionReplay(AbstractReplay):
         data = self.__records__['data'][0]
 
         if 'callback' in data and data['callback']:
-            # TODO: handle callbacks (by calling those functions)
             for arg in args + tuple(kwargs.values()):
                 # TODO: improve logic over just picking the first available
                 if not inspect.isfunction(arg):
