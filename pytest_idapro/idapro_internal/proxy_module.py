@@ -65,19 +65,31 @@ except NameError:
     base_types += (type(None),)
 
 
-def strip_proxies(o):
+def call_prepare_proxies(o, pr):
+    """Prepare proxy arguments for a proxied call
+    This is mostly about striping the proxy object, but will also re-wrap
+    functions passed as arguments, as those could be callback functions that
+    should be called by the replay core when needed.
+    """
     if isinstance(o, dict):
-        return {k: strip_proxies(v) for k, v in o.items()}
+        return {k: call_prepare_proxies(v, pr) for k, v in o.items()}
     elif isinstance(o, list):
-        return [strip_proxies(v) for v in o]
+        return [call_prepare_proxies(v, pr) for v in o]
     elif isinstance(o, tuple):
-        return tuple([strip_proxies(v) for v in o])
+        return tuple([call_prepare_proxies(v, pr) for v in o])
     elif hasattr(o, '__subject__') or type(o).__name__ == 'ProxyClass':
-        safe_print("object strip_proxies", o, o.__subject__, type(o), type(o.__subject__))
+        safe_print("object call_prepare_proxies", o, o.__subject__, type(o), type(o.__subject__))
         return o.__subject__
+    elif inspect.isfunction(o):
+        # if object is an unproxied function, we'll need to proxy it
+        # specifically for the call, so any callback functions will be
+        # registered by us
+        # TODO: this is unlikely but we will currently miss callbacks that
+        # are proxied objects
+        return record_factory(o.__name__, o, pr['callback'])
     elif isinstance(o, base_types):
         return o
-    safe_print("default strip_proxies", type(o), o, type(o).__name__)
+    safe_print("default call_prepare_proxies", type(o), o, type(o).__name__)
     return o
 
 
@@ -224,17 +236,24 @@ class AbstractRecord(object):
     def __call__(self, *args, **kwargs):
         # TODO: should also record & replay exceptions within functions
         safe_print("function call", self, args, kwargs)
-        args = strip_proxies(args)
-        kwargs = strip_proxies(kwargs)
-        safe_print("function call clean args", self, args, kwargs)
-        original_retval = self.__subject__(*args, **kwargs)
-        safe_print("function call ret", original_retval)
         calldesc = {'args': serialize_data(args),
-                    'kwargs': serialize_data(kwargs)}
-        d = {}
-        retval = record_factory('retval', original_retval, d)
-        calldesc['retval'] = serialize_data(d['retval'])
+                    'kwargs': serialize_data(kwargs),
+                    'retval': {}, 'callback': {}}
         self.__records__.setdefault('data', []).append(calldesc)
+
+        args = call_prepare_proxies(args, calldesc)
+        kwargs = call_prepare_proxies(kwargs, calldesc)
+        safe_print("function call clean args", self, args, kwargs)
+        safe_print(self.__subject__)
+        try:
+            original_retval = self.__subject__(*args, **kwargs)
+        except Exception:
+            safe_print("Exception encountered in proxied call")
+            import traceback
+            safe_print(traceback.format_exc())
+            raise
+        safe_print("function call ret", original_retval)
+        retval = record_factory('retval', original_retval, calldesc)
         return retval
 
     def __getattribute__(self, attr, oga=object.__getattribute__):
