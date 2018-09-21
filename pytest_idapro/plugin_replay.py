@@ -121,5 +121,13 @@ class FunctionReplay(AbstractReplay):
         if not self.__records__['data']:
             return None
 
+        # TODO: improve logic over just picking the first available
+        # based on matching variables or something
+        data = self.__records__['data'][0]
+
+        if 'callback' in data and data['callback']:
+            # TODO: handle callbacks (by calling those functions)
+            pass
+
         print(self.__records__)
-        return replay_factory('retval', self.__records__['data'][0])
+        return replay_factory('retval', data)
