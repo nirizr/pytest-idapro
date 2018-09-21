@@ -78,7 +78,8 @@ def call_prepare_proxies(o, pr):
     elif isinstance(o, tuple):
         return tuple([call_prepare_proxies(v, pr) for v in o])
     elif hasattr(o, '__subject__') or type(o).__name__ == 'ProxyClass':
-        safe_print("object call_prepare_proxies", o, o.__subject__, type(o), type(o.__subject__))
+        safe_print("object call_prepare_proxies", o, o.__subject__, type(o),
+                   type(o.__subject__))
         return o.__subject__
     elif inspect.isfunction(o):
         # if object is an unproxied function, we'll need to proxy it
@@ -110,7 +111,8 @@ def serialize_data(o):
         return o
     return repr(o)
     # TODO: if ProxyClass reached here, it should've need stipped in __call__
-    raise RuntimeError("Unsupported serialize", type(o), o, o.__class__.__name__, type(o).__name__)
+    raise RuntimeError("Unsupported serialize", type(o), o,
+                       o.__class__.__name__, type(o).__name__)
 
 
 def init_record(record, subject, records, name, value_type=None):
