@@ -50,6 +50,7 @@ class ReplayDeferredPlugin(MockDeferredPlugin):
 def init_replay(replay, object_name, records):
     replay.__object_name__ = object_name
     replay.__records__ = records
+    replay.__name__ = object_name
 
     return replay
 
@@ -57,21 +58,32 @@ def init_replay(replay, object_name, records):
 def replay_factory(name, records):
     record = records[name]
     value_type = record['value_type']
-    if value_type == 'value':
+    if value_type == 'value' or value_type == 'override':
         return record['data']
     elif value_type == 'module':
         return init_replay(AbstractReplay(), name, record['data'])
     elif value_type == 'class':
         class ClassReplay(AbstractReplay):
             def __new__(cls, *args, **kwargs):
-                print("classreplay.__new__", cls, args, kwargs)
-                return super(ClassReplay, cls).__new__(cls, *args, **kwargs)
+                print("classreplay.__new__", cls, args, kwargs, cls.__records__)
+                o = super(ClassReplay, cls).__new__(cls)
+
+                # TODO: handle more than one better
+                for instance in cls.__records__['data']:
+                    if (instance['args'] == list(args) and
+                        instance['kwargs'] == kwargs and
+                        instance['name'] == cls.__name__):
+                        return init_replay(o, name, instance)
+                raise Exception("Failed matching", instance, args, kwargs)
 
         return init_replay(ClassReplay, name, record)
     elif value_type == 'function':
         return init_replay(FunctionReplay(), name, record)
     elif value_type == 'proxy':
         return init_replay(AbstractReplay(), name, record['data'])
+    elif value_type == 'exception':
+        # TODO: make sure there's a msg in here
+        return Exception(*record['args'])
     else:
         raise ValueError("Unhandled value type", name, record)
 
@@ -82,7 +94,7 @@ class AbstractReplay(object):
     def __getattribute__(self, attr, oga=object.__getattribute__):
         object_name = oga(self, '__object_name__')
         records = oga(self, '__records__')
-        if attr == '__object_name__':
+        if attr == '__object_name__' or attr == '__name__':
             return object_name
         elif attr == '__records__':
             return records
@@ -139,4 +151,6 @@ class FunctionReplay(AbstractReplay):
                 # TODO: validate return value is correct
 
         print(self.__records__)
+        if 'exception' in data:
+            raise replay_factory('exception', data)
         return replay_factory('retval', data)

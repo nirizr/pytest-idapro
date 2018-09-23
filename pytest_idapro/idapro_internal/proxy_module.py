@@ -159,6 +159,8 @@ def record_factory(name, value, parent_record):
     elif inspect.isclass(value) and issubclass(value, BaseException):
         parent_record[name] = {'value_type': 'exception_class'}
         return value
+    elif isinstance(value, BaseException):
+        parent_record[name] = {'value_type': 'exception', 'args': value.args}
     elif inspect.isclass(value) and issubclass(value, object):
             safe_print("getattr class", value, name, type(value))
             if isinstance(value, AbstractRecord):
@@ -181,6 +183,9 @@ def record_factory(name, value, parent_record):
                     safe_print("orig class result", r.__class__)
                     r = init_record(InstanceRecord(), r, parent_record[name],
                                     None, "instance")
+                    r.__records__['args'] = serialize_data(args)
+                    r.__records__['kwargs'] = serialize_data(kwargs)
+                    r.__records__['name'] = cls.__name__
                     safe_print("class result", r.__class__)
 
                     safe_print("type r", type(r))
@@ -241,7 +246,7 @@ class AbstractRecord(object):
         safe_print("function call", self, args, kwargs)
         calldesc = {'args': serialize_data(args),
                     'kwargs': serialize_data(kwargs),
-                    'retval': {}, 'callback': {}}
+                    'callback': {}}
         self.__records__.setdefault('data', []).append(calldesc)
 
         args = call_prepare_proxies(args, calldesc)
@@ -250,10 +255,11 @@ class AbstractRecord(object):
         safe_print(self.__subject__)
         try:
             original_retval = self.__subject__(*args, **kwargs)
-        except Exception:
+        except Exception as ex:
             safe_print("Exception encountered in proxied call")
             import traceback
             safe_print(traceback.format_exc())
+            record_factory('exception', ex, calldesc)
             raise
         safe_print("function call ret", original_retval)
         # TODO: to keep any retval related recorded data we should not pass
