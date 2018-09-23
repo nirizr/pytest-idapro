@@ -1,7 +1,10 @@
 import pickle
 import json
 import inspect
-import exceptions
+try:
+    import exceptions
+except ImportError:
+    import builtins as exceptions
 
 import sys
 
@@ -92,8 +95,13 @@ def replay_factory(name, records):
     elif value_type == 'exception_class':
         if not hasattr(exceptions, record['class_name']):
             return Exception
-
-        return getattr(exceptions, record['class_name'])
+        ex_cls = getattr(exceptions, record['class_name'])
+        # Make sure retireved class is actually an exception class, to
+        # prevent potential code-execution using an arbitrary builtin class
+        # load
+        if not issubclass(ex_cls, BaseException):
+            return Exception
+        return ex_cls
     else:
         raise ValueError("Unhandled value type", name, record)
 
