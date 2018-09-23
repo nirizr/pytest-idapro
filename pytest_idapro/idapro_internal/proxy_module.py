@@ -188,7 +188,10 @@ def record_factory(name, value, parent_record):
                                     None, "instance")
                     r.__records__['args'] = serialize_data(args)
                     r.__records__['kwargs'] = serialize_data(kwargs)
-                    r.__records__['name'] = cls.__name__
+                    if cls.__name__ == 'ProxyClass':
+                        r.__records__['name'] = cls.__subject_name__
+                    else:
+                        r.__records__['name'] = cls.__name__
                     safe_print("class result", r.__class__)
 
                     safe_print("type r", type(r))

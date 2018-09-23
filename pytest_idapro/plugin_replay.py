@@ -70,12 +70,13 @@ def replay_factory(name, records):
                 o = super(ClassReplay, cls).__new__(cls)
 
                 # TODO: handle more than one better
+                args = list(args)
                 for instance in cls.__records__['data']:
-                    if (instance['args'] == list(args) and
+                    if (instance['args'] == args and
                         instance['kwargs'] == kwargs and
                         instance['name'] == cls.__name__):
                         return init_replay(o, name, instance)
-                raise Exception("Failed matching", instance, args, kwargs)
+                raise Exception("Failed matching", cls.__records__['data'], args, kwargs)
 
         return init_replay(ClassReplay, name, record)
     elif value_type == 'function':
