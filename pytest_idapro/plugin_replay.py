@@ -66,7 +66,8 @@ def replay_factory(name, records):
     elif value_type == 'class':
         class ClassReplay(AbstractReplay):
             def __new__(cls, *args, **kwargs):
-                print("classreplay.__new__", cls, args, kwargs, cls.__records__)
+                print("classreplay.__new__", cls, args, kwargs,
+                      cls.__records__)
                 o = super(ClassReplay, cls).__new__(cls)
 
                 # TODO: handle more than one better
@@ -76,7 +77,8 @@ def replay_factory(name, records):
                         instance['kwargs'] == kwargs and
                         instance['name'] == cls.__name__):
                         return init_replay(o, name, instance)
-                raise Exception("Failed matching", cls.__records__['data'], args, kwargs)
+                raise Exception("Failed matching", cls.__records__['data'],
+                                args, kwargs)
 
         return init_replay(ClassReplay, name, record)
     elif value_type == 'function':
