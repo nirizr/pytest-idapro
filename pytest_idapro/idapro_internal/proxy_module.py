@@ -157,10 +157,13 @@ def record_factory(name, value, parent_record):
         safe_print("Skipping type")
         return value
     elif inspect.isclass(value) and issubclass(value, BaseException):
-        parent_record[name] = {'value_type': 'exception_class'}
+        parent_record[name] = {'value_type': 'exception_class',
+                               'class_name': value.__name__}
         return value
     elif isinstance(value, BaseException):
         parent_record[name] = {'value_type': 'exception', 'args': value.args}
+        record_factory('exception_class', value.__class__,
+                       parent_record[name])
     elif inspect.isclass(value) and issubclass(value, object):
             safe_print("getattr class", value, name, type(value))
             if isinstance(value, AbstractRecord):
