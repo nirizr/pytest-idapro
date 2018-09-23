@@ -1,6 +1,7 @@
 import pickle
 import json
 import inspect
+import exceptions
 
 import sys
 
@@ -83,7 +84,13 @@ def replay_factory(name, records):
         return init_replay(AbstractReplay(), name, record['data'])
     elif value_type == 'exception':
         # TODO: make sure there's a msg in here
-        return Exception(*record['args'])
+        cls = replay_factory('exception_class', record)
+        return cls(*record['args'])
+    elif value_type == 'exception_class':
+        if not hasattr(exceptions, record['class_name']):
+            return Exception
+
+        return getattr(exceptions, record['class_name'])
     else:
         raise ValueError("Unhandled value type", name, record)
 
