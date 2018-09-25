@@ -59,6 +59,22 @@ def init_replay(replay, object_name, records):
     return replay
 
 
+def score(instance, args, kwargs, name):
+    caller = inspect.stack()[2]
+
+    s = 0
+    s += 100 if str(name) != str(instance['name']) else 0
+    s += sum(10 for a1, a2 in zip(args, instance['args'])
+             if str(a1) != str(a2))
+    s += sum(10 for a1, a2 in zip(kwargs, instance['kwargs'])
+             if str(a1) != str(a2))
+    s += abs(caller[2] - instance['caller_line'])
+    s += 100 if str(caller[1]) != str(instance['caller_file']) else 0
+    s += 100 if str(caller[3]) != str(instance['caller_function']) else 0
+
+    return s
+
+
 def replay_factory(name, records):
     record = records[name]
     value_type = record['value_type']
@@ -73,15 +89,25 @@ def replay_factory(name, records):
                       cls.__records__)
                 o = super(ClassReplay, cls).__new__(cls)
 
-                # TODO: handle more than one better
                 args = list(args)
-                for instance in cls.__records__['data']:
-                    if (instance['args'] == args and
-                        instance['kwargs'] == kwargs and
-                        instance['name'] == cls.__name__):
-                        return init_replay(o, name, instance)
-                raise Exception("Failed matching", cls.__records__['data'],
-                                args, kwargs)
+                data = cls.__records__['data']
+
+                def key_func(i):
+                    return score(i, args, kwargs, cls.__name__), i
+                instances = sorted(map(key_func, data))
+                if len(instances) == 0:
+                    raise Exception("Failed matching", args, kwargs)
+                # if instances[0][0] != 0:
+                #     raise Exception("Non zero score", args, kwargs,
+                #                     cls.__name__, inspect.stack()[1],
+                #                     instances[0])
+                # if sum(1 for i in instances if i[0] == 0) > 1:
+                #     raise Exception("More than one zero scores", args,
+                #                     kwargs, cls.__name__,
+                #                     inspect.stack()[1], instances)
+                print("matched with", instances[0], args, kwargs,
+                      cls.__name__, inspect.stack()[1])
+                return init_replay(o, name, instances[0][1])
 
         return init_replay(ClassReplay, name, record)
     elif value_type == 'function':

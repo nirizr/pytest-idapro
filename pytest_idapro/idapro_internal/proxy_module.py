@@ -192,6 +192,10 @@ def record_factory(name, value, parent_record):
                         r.__records__['name'] = cls.__subject_name__
                     else:
                         r.__records__['name'] = cls.__name__
+                    caller = inspect.stack()[1]
+                    r.__records__['caller_file'] = caller[1]
+                    r.__records__['caller_line'] = caller[2]
+                    r.__records__['caller_function'] = caller[3]
                     safe_print("class result", r.__class__)
 
                     safe_print("type r", type(r))
