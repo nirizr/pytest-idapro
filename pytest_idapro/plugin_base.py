@@ -14,8 +14,6 @@ class IDAProEntriesScanner(pytest.Module):
             self.idapro_plugin_entries.add(obj)
 
     def istestclass(self, obj, name):
-        print(":: inspect mro", inspect.getmro(obj))
-        print(":: inspect names", [c.__name__ for c in inspect.getmro(obj)])
         if any(cls.__name__ == 'action_handler_t'
                for cls in inspect.getmro(obj)):
             self.idapro_action_entries.add(obj)
