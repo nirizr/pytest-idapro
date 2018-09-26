@@ -115,12 +115,9 @@ def serialize_data(o):
     #                    o.__class__.__name__, type(o).__name__)
 
 
-def init_record(record, subject, records, name, value_type=None):
+def init_record(record, subject, records, name):
     record.__subject__ = subject
     record.__subject_name__ = name
-    # TODO: should we make value_type mandatory?
-    if value_type:
-        record.__value_type__ = value_type
 
     if name is None:
         record.__records__ = {'value_type': record.__value_type__}
@@ -171,6 +168,7 @@ def record_factory(name, value, parent_record):
                 return value
 
             class ProxyClass(value):
+                __value_type__ = 'class'
                 def __new__(cls, *args, **kwargs):
                     safe_print("!!! class record newed", cls, args, kwargs)
                     r = super(ProxyClass, cls).__new__(cls, *args, **kwargs)
@@ -185,7 +183,7 @@ def record_factory(name, value, parent_record):
 
                     safe_print("orig class result", r.__class__)
                     r = init_record(InstanceRecord(), r, parent_record[name],
-                                    None, "instance")
+                                    None)
                     r.__records__['args'] = serialize_data(args)
                     r.__records__['kwargs'] = serialize_data(kwargs)
                     if cls.__name__ == 'ProxyClass':
@@ -218,7 +216,7 @@ def record_factory(name, value, parent_record):
                     safe_print("!!! class record called", self, args, kwargs)
                     return super(ProxyClass, self).__call__(*args, **kwargs)
             safe_print("class mro", ProxyClass.__mro__)
-            return init_record(ProxyClass, value, parent_record, name, 'class')
+            return init_record(ProxyClass, value, parent_record, name)
     elif isinstance(value, types.ModuleType):
         if is_idamodule(value.__name__):
             return init_record(ModuleRecord(), value, parent_record, name)
@@ -226,16 +224,14 @@ def record_factory(name, value, parent_record):
             safe_print("skipping non-ida module")
             return value
     elif isinstance(value, types.InstanceType):
-        return init_record(AbstractRecord(), value, parent_record, name,
-                           'oldclass')
+        return init_record(OldClassRecord(), value, parent_record, name)
     elif isinstance(value, base_types):
         if name != '__dict__':
             parent_record[name] = {'value_type': 'value', 'data': value}
         return value
     else:
         safe_print("record_factroy called", value, name, type(value))
-        value = init_record(AbstractRecord(), value, parent_record, name,
-                            'unknown')
+        value = init_record(AbstractRecord(), value, parent_record, name)
         safe_print(repr(value))
 
     return value
@@ -247,6 +243,7 @@ def record_factory(name, value, parent_record):
 class AbstractRecord(object):
     __slots__ = ['__subject__', '__records__', '__subject_name__',
                  '__value_type__']
+    __value_type__ = "unknown"
 
     # TODO: handle callback registrations properly, i.e. execute_sync
     # This should also include recording the input arguments passed
@@ -403,12 +400,17 @@ class FunctionRecord(AbstractRecord):
 
 
 class InstanceRecord(AbstractRecord):
+    __value_type__ = "instance"
     def __getattribute__(self, attr, oga=object.__getattribute__):
         try:
             safe_print("classrecord getattr", attr)
             return super(InstanceRecord, self).__getattribute__(attr, oga)
         except AttributeError:
             return oga(self, attr)
+
+
+class OldClassRecord(AbstractRecord):
+    __value_type__ = 'oldclass'
 
 
 def get_records():
