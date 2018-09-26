@@ -135,25 +135,18 @@ def init_record(record, subject, records, name):
 
 
 def record_factory(name, value, parent_record):
-    if isinstance(value, AbstractRecord):
-        safe_print("Skipping record object", value)
+    if (isinstance(value, AbstractRecord) or
+        inspect.isbuiltin(value) or
+        type(value).__name__ == "swigvarlink" or
+        value is type):
         return value
-    elif inspect.isfunction(value):
+    elif inspect.isfunction(value) or inspect.ismethod(value):
         safe_print("got function record", value, name)
         return init_record(FunctionRecord(), value, parent_record, name)
-    elif inspect.ismethod(value):
-        safe_print("got method record", name, value, type(value))
-        return init_record(FunctionRecord(), value, parent_record, name)
-    elif inspect.isbuiltin(value):
-        safe_print("skipping builtin")
-        return value
-    elif type(value).__name__ == "swigvarlink":
-        safe_print("skipping swig C object")
-        return value
-    elif value is type:
-        safe_print("Skipping type")
-        return value
     elif inspect.isclass(value) and issubclass(value, BaseException):
+        # TODO: maybe exceptions should also be proxied as class instances
+        # instead of being specially treated? they have attributes etc and
+        # right now args is manually handled in the next isinstance
         parent_record[name] = {'value_type': 'exception_class',
                                'class_name': value.__name__}
         return value
@@ -161,6 +154,7 @@ def record_factory(name, value, parent_record):
         parent_record[name] = {'value_type': 'exception', 'args': value.args}
         record_factory('exception_class', value.__class__,
                        parent_record[name])
+        return value
     elif inspect.isclass(value) and issubclass(value, object):
             safe_print("getattr class", value, name, type(value))
             if isinstance(value, AbstractRecord):
@@ -224,32 +218,23 @@ def record_factory(name, value, parent_record):
             safe_print("skipping non-ida module")
             return value
     elif isinstance(value, types.InstanceType):
-        return init_record(OldClassRecord(), value, parent_record, name)
+        return init_record(OldInstanceRecord(), value, parent_record, name)
     elif isinstance(value, base_types):
         if name != '__dict__':
             parent_record[name] = {'value_type': 'value', 'data': value}
         return value
-    else:
-        safe_print("record_factroy called", value, name, type(value))
-        value = init_record(AbstractRecord(), value, parent_record, name)
-        safe_print(repr(value))
 
+    safe_print("record_factroy failed", value, name, type(value))
+    value = init_record(AbstractRecord(), value, parent_record, name)
     return value
 
 
-# TODO: split proxy and Record objects, use AbstractRecord by Replay as well
-# Or should I? what will be the record's subject value??
-# maybe Record should always return concrete values?
 class AbstractRecord(object):
     __slots__ = ['__subject__', '__records__', '__subject_name__',
                  '__value_type__']
     __value_type__ = "unknown"
 
-    # TODO: handle callback registrations properly, i.e. execute_sync
-    # This should also include recording the input arguments passed
-    # to the callbacks themselves (probably by proxying the callback
     def __call__(self, *args, **kwargs):
-        # TODO: should also record & replay exceptions within functions
         safe_print("function call", self, args, kwargs)
         calldesc = {'args': serialize_data(args),
                     'kwargs': serialize_data(kwargs),
@@ -409,8 +394,8 @@ class InstanceRecord(AbstractRecord):
             return oga(self, attr)
 
 
-class OldClassRecord(AbstractRecord):
-    __value_type__ = 'oldclass'
+class OldInstanceRecord(AbstractRecord):
+    __value_type__ = 'oldinstance'
 
 
 def get_records():
