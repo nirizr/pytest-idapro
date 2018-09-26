@@ -202,8 +202,6 @@ def record_factory(name, value, parent_record):
 
 
 class AbstractRecord(object):
-    __slots__ = ['__subject__', '__records__', '__subject_name__',
-                 '__value_type__']
     __value_type__ = "unknown"
 
     def __call__(self, *args, **kwargs):
