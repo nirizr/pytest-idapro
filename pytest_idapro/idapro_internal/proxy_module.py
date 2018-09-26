@@ -327,33 +327,17 @@ class AbstractRecord(object):
 
     # Ugly code definitions for all special python methods
     # this will forward all unique method calls to the proxied object
-    for name in ('repr', 'str', 'hash', 'len', 'abs', 'complex', 'int', 'long',
-                 'float', 'iter', 'oct', 'hex', 'bool', 'operator.index',
-                 'math.trunc'):
-        if (name in ('len', 'complex') or
-            hasattr(int, '__%s__' % name.split('.')[-1])):
-            if '.' in name:
-                name = name.split('.')
-                exec("global %s;"
-                     "from %s import %s" % (name[1], name[0], name[1]))
-                name = name[1]
+    for name in ('repr', 'str', 'hash', 'len', 'abs', 'complex', 'int',
+                 'long', 'float', 'iter', 'oct', 'hex', 'bool', 'index',
+                 'trunc', 'neg', 'pos', 'invert'):
+        if hasattr(int, '__%s__' % name):
             exec("def __%s__(self):"
-                 "    return %s(self.__subject__)" % (name, name))
+                 "    return self.__subject__.__%s__()" % (name, name))
 
-    for name in 'cmp', 'coerce', 'divmod':
+    for name in 'cmp', 'coerce', 'divmod', 'lt', 'gt', 'le', 'ge', 'eq', 'ne':
         if hasattr(int, '__%s__' % name):
             exec("def __%s__(self, ob):"
-                 "    return %s(self.__subject__, ob)" % (name, name))
-
-    for name, op in [
-        ('lt', '<'), ('gt', '>'), ('le', '<='), ('ge', '>='),
-        ('eq', '=='), ('ne', '!=')
-    ]:
-        exec("def __%s__(self, ob):"
-             "    return self.__subject__ %s ob" % (name, op))
-
-    for name, op in [('neg', '-'), ('pos', '+'), ('invert', '~')]:
-        exec("def __%s__(self): return %s self.__subject__" % (name, op))
+                 "    return self.__subject__.__%s__(ob)" % (name, name))
 
     for name, op in [('or', '|'), ('and', '&'), ('xor', '^'), ('lshift', '<<'),
                      ('rshift', '>>'), ('add', '+'), ('sub', '-'),
