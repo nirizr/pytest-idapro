@@ -153,12 +153,12 @@ class IdaWorker(object):
         if dest_format == "json":
             import json
             with open(dest_file, 'wb') as fh:
-                json.dump(proxy_module.g_records, fh)
+                json.dump(proxy_module.get_records(), fh)
             return ('save_records', 'done')
         elif dest_format == "pickle":
             import cPickle as pickle
             with open(dest_file, 'wb') as fh:
-                pickle.dump(proxy_module.g_records, fh)
+                pickle.dump(proxy_module.get_records(), fh)
             return ('save_records', 'done')
 
         return ('save_records', 'failed')
