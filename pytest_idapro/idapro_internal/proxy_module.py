@@ -157,12 +157,10 @@ def record_factory(name, value, parent_record):
         return value
     elif inspect.isclass(value) and issubclass(value, object):
             safe_print("getattr class", value, name, type(value))
-            if isinstance(value, AbstractRecord):
-                safe_print("INSTANCE")
-                return value
 
             class ProxyClass(value):
                 __value_type__ = 'class'
+
                 def __new__(cls, *args, **kwargs):
                     safe_print("!!! class record newed", cls, args, kwargs)
                     r = super(ProxyClass, cls).__new__(cls, *args, **kwargs)
@@ -386,6 +384,7 @@ class FunctionRecord(AbstractRecord):
 
 class InstanceRecord(AbstractRecord):
     __value_type__ = "instance"
+
     def __getattribute__(self, attr, oga=object.__getattribute__):
         try:
             safe_print("classrecord getattr", attr)
