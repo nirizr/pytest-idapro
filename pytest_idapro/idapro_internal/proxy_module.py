@@ -78,8 +78,6 @@ def call_prepare_proxies(o, pr):
     elif isinstance(o, tuple):
         return tuple([call_prepare_proxies(v, pr) for v in o])
     elif hasattr(o, '__subject__') or type(o).__name__ == 'ProxyClass':
-        safe_print("object call_prepare_proxies", o, o.__subject__, type(o),
-                   type(o.__subject__))
         return o.__subject__
     elif inspect.isfunction(o):
         # if object is an unproxied function, we'll need to proxy it
@@ -90,7 +88,8 @@ def call_prepare_proxies(o, pr):
         return record_factory(o.__name__, o, pr['callback'])
     elif isinstance(o, base_types):
         return o
-    safe_print("default call_prepare_proxies", type(o), o, type(o).__name__)
+    safe_print("WARN: default call_prepare_proxies", type(o), o,
+               type(o).__name__)
     return o
 
 
@@ -109,10 +108,8 @@ def serialize_data(o):
         return repr(o)
     elif isinstance(o, base_types):
         return o
+    safe_print("WARN: Unsupported serialize", type(o), o, type(o).__name__)
     return repr(o)
-    # TODO: if ProxyClass reached here, it should've need stipped in __call__
-    # raise RuntimeError("Unsupported serialize", type(o), o,
-    #                    o.__class__.__name__, type(o).__name__)
 
 
 def init_record(record, subject, records, name):
@@ -141,7 +138,6 @@ def record_factory(name, value, parent_record):
         value is type):
         return value
     elif inspect.isfunction(value) or inspect.ismethod(value):
-        safe_print("got function record", value, name)
         return init_record(FunctionRecord(), value, parent_record, name)
     elif inspect.isclass(value) and issubclass(value, BaseException):
         # TODO: maybe exceptions should also be proxied as class instances
@@ -156,24 +152,19 @@ def record_factory(name, value, parent_record):
                        parent_record[name])
         return value
     elif inspect.isclass(value) and issubclass(value, object):
-            safe_print("getattr class", value, name, type(value))
-
             class ProxyClass(value):
                 __value_type__ = 'class'
 
                 def __new__(cls, *args, **kwargs):
-                    safe_print("!!! class record newed", cls, args, kwargs)
                     r = super(ProxyClass, cls).__new__(cls, *args, **kwargs)
 
                     # __init__ method is not called by python if __new__
                     # returns an object that is not an instance of the same
                     # class type. We therefore have to call __init__ ourselves
                     # before returning a InstanceRecord
-                    safe_print("class obj type", type(r))
                     if hasattr(cls, '__init__'):
                         cls.__init__(r, *args, **kwargs)
 
-                    safe_print("orig class result", r.__class__)
                     r = init_record(InstanceRecord(), r, parent_record[name],
                                     None)
                     r.__records__['args'] = serialize_data(args)
@@ -186,26 +177,19 @@ def record_factory(name, value, parent_record):
                     r.__records__['caller_file'] = caller[1]
                     r.__records__['caller_line'] = caller[2]
                     r.__records__['caller_function'] = caller[3]
-                    safe_print("class result", r.__class__)
 
-                    safe_print("type r", type(r))
                     return r
 
                 def __getattribute__(self, attr, oga=object.__getattribute__):
                     try:
-                        safe_print("proxyclass getattr", attr, type(self))
                         return super(ProxyClass, self).__getattribute__(attr)
                     except AttributeError:
-                        safe_print("Second attempt")
                         return oga(type(self), attr)
-            safe_print("class mro", ProxyClass.__mro__)
             return init_record(ProxyClass, value, parent_record, name)
     elif isinstance(value, types.ModuleType):
         if is_idamodule(value.__name__):
             return init_record(ModuleRecord(), value, parent_record, name)
-        else:
-            safe_print("skipping non-ida module")
-            return value
+        return value
     elif isinstance(value, types.InstanceType):
         return init_record(OldInstanceRecord(), value, parent_record, name)
     elif isinstance(value, base_types):
@@ -213,7 +197,7 @@ def record_factory(name, value, parent_record):
             parent_record[name] = {'value_type': 'value', 'data': value}
         return value
 
-    safe_print("record_factroy failed", value, name, type(value))
+    safe_print("WARN: record_factroy failed", value, name, type(value))
     value = init_record(AbstractRecord(), value, parent_record, name)
     return value
 
@@ -224,7 +208,6 @@ class AbstractRecord(object):
     __value_type__ = "unknown"
 
     def __call__(self, *args, **kwargs):
-        safe_print("function call", self, args, kwargs)
         calldesc = {'args': serialize_data(args),
                     'kwargs': serialize_data(kwargs),
                     'callback': {}}
@@ -232,17 +215,11 @@ class AbstractRecord(object):
 
         args = call_prepare_proxies(args, calldesc)
         kwargs = call_prepare_proxies(kwargs, calldesc)
-        safe_print("function call clean args", self, args, kwargs)
-        safe_print(self.__subject__)
         try:
             original_retval = self.__subject__(*args, **kwargs)
         except Exception as ex:
-            safe_print("Exception encountered in proxied call")
-            import traceback
-            safe_print(traceback.format_exc())
             record_factory('exception', ex, calldesc)
             raise
-        safe_print("function call ret", original_retval)
         # TODO: to keep any retval related recorded data we should not pass
         # a temp dict to this record_factory. instead, we should move
         # serialize_data to a json serializaion encode/decode class.
@@ -257,10 +234,6 @@ class AbstractRecord(object):
             return oga(self, attr)
 
         value = getattr(self.__subject__, attr)
-        safe_print("getattr sub", self.__subject__)
-        safe_print("Getattr called", value, attr, type(value),
-                   self.__subject__, self.__subject_name__,
-                   self.__value_type__)
         processed_value = record_factory(attr, value, self.__records__)
         return processed_value
 
@@ -378,7 +351,6 @@ class InstanceRecord(AbstractRecord):
 
     def __getattribute__(self, attr, oga=object.__getattribute__):
         try:
-            safe_print("classrecord getattr", attr)
             return super(InstanceRecord, self).__getattribute__(attr, oga)
         except AttributeError:
             return oga(self, attr)
@@ -394,5 +366,4 @@ def get_records():
 
 
 def setup():
-    safe_print("preloaded modules", sys.modules.keys())
     sys.meta_path.insert(0, ProxyModuleLoader())
