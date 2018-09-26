@@ -152,40 +152,39 @@ def record_factory(name, value, parent_record):
                        parent_record[name])
         return value
     elif inspect.isclass(value) and issubclass(value, object):
-            class ProxyClass(value):
-                __value_type__ = 'class'
+        class ProxyClass(value):
+            __value_type__ = 'class'
 
-                def __new__(cls, *args, **kwargs):
-                    r = super(ProxyClass, cls).__new__(cls, *args, **kwargs)
+            def __new__(cls, *args, **kwargs):
+                r = super(ProxyClass, cls).__new__(cls, *args, **kwargs)
 
-                    # __init__ method is not called by python if __new__
-                    # returns an object that is not an instance of the same
-                    # class type. We therefore have to call __init__ ourselves
-                    # before returning a InstanceRecord
-                    if hasattr(cls, '__init__'):
-                        cls.__init__(r, *args, **kwargs)
+                # __init__ method is not called by python if __new__
+                # returns an object that is not an instance of the same
+                # class type. We therefore have to call __init__ ourselves
+                # before returning a InstanceRecord
+                if hasattr(cls, '__init__'):
+                    cls.__init__(r, *args, **kwargs)
 
-                    r = init_record(InstanceRecord(), r, parent_record[name],
-                                    None)
-                    r.__records__['args'] = serialize_data(args)
-                    r.__records__['kwargs'] = serialize_data(kwargs)
-                    if cls.__name__ == 'ProxyClass':
-                        r.__records__['name'] = cls.__subject_name__
-                    else:
-                        r.__records__['name'] = cls.__name__
-                    caller = inspect.stack()[1]
-                    r.__records__['caller_file'] = caller[1]
-                    r.__records__['caller_line'] = caller[2]
-                    r.__records__['caller_function'] = caller[3]
+                r = init_record(InstanceRecord(), r, parent_record[name], None)
+                r.__records__['args'] = serialize_data(args)
+                r.__records__['kwargs'] = serialize_data(kwargs)
+                if cls.__name__ == 'ProxyClass':
+                    r.__records__['name'] = cls.__subject_name__
+                else:
+                    r.__records__['name'] = cls.__name__
+                caller = inspect.stack()[1]
+                r.__records__['caller_file'] = caller[1]
+                r.__records__['caller_line'] = caller[2]
+                r.__records__['caller_function'] = caller[3]
 
-                    return r
+                return r
 
-                def __getattribute__(self, attr, oga=object.__getattribute__):
-                    try:
-                        return super(ProxyClass, self).__getattribute__(attr)
-                    except AttributeError:
-                        return oga(type(self), attr)
-            return init_record(ProxyClass, value, parent_record, name)
+            def __getattribute__(self, attr, oga=object.__getattribute__):
+                try:
+                    return super(ProxyClass, self).__getattribute__(attr)
+                except AttributeError:
+                    return oga(type(self), attr)
+        return init_record(ProxyClass, value, parent_record, name)
     elif isinstance(value, types.ModuleType):
         if is_idamodule(value.__name__):
             return init_record(ModuleRecord(), value, parent_record, name)
