@@ -198,15 +198,6 @@ def record_factory(name, value, parent_record):
                     except AttributeError:
                         safe_print("Second attempt")
                         return oga(type(self), attr)
-
-                def __init__(self, *args, **kwargs):
-                    safe_print("init called")
-                    super(ProxyClass, self).__init__(*args, **kwargs)
-
-                # TODO: should this be logged??
-                def __call__(self, *args, **kwargs):
-                    safe_print("!!! class record called", self, args, kwargs)
-                    return super(ProxyClass, self).__call__(*args, **kwargs)
             safe_print("class mro", ProxyClass.__mro__)
             return init_record(ProxyClass, value, parent_record, name)
     elif isinstance(value, types.ModuleType):
