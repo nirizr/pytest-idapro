@@ -14,10 +14,10 @@ def pytest_addoption(parser):
                                         "empty database will be automatically "
                                         "loaded.")
     group._addoption('--ida-record', help="Record all IDA API interactions "
-                                          "to specified json or pickle file, "
-                                          "to be later used with the "
-                                          "--ida-replay flag to simulate test "
-                                          "execution without an IDA instance.")
+                                          "to specified json file, to later "
+                                          "be used with the --ida-replay flag "
+                                          "to simulate test execution without "
+                                          "an IDA instance.")
     group._addoption('--ida-replay', help="Provide a recording of a previous "
                                           "IDA test execution. It will be "
                                           "replayed without an IDA executable "
@@ -55,11 +55,6 @@ def pytest_cmdline_main(config):
     if ida_record and not ida_path:
         raise pytest.UsageError("Cannot record without running in an IDA "
                                 "instance")
-    if ida_record and os.path.splitext(ida_record)[1] not in ('.json',
-                                                              '.pickle'):
-        raise pytest.UsageError("--ida-record must point to either a json or "
-                                "a pickle file with the appropriate file "
-                                "extension.")
 
     # replay related validations
     if ida_replay and ida_path:
@@ -68,11 +63,6 @@ def pytest_cmdline_main(config):
     if ida_replay and not os.path.isfile(ida_replay):
         raise pytest.UsageError("--ida-replay must point to an IDA session "
                                 "recording file.")
-    if ida_replay and os.path.splitext(ida_replay)[1] not in ('.json',
-                                                              '.pickle'):
-        raise pytest.UsageError("--ida-replay must point to either a json or "
-                                "a pickle file with the appropriate file "
-                                "extension.")
 
     if ida_keep and not ida_path:
         raise pytest.UsageError("--ida-keep is only meaningful when --ida is "

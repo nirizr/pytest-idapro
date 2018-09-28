@@ -1,4 +1,3 @@
-import pickle
 import json
 import inspect
 try:
@@ -23,14 +22,8 @@ class ReplayDeferredPlugin(MockDeferredPlugin):
         self.config = config
         self.session = None
 
-        if self.replay_file.endswith(".json"):
-            with open(self.replay_file, 'rb') as fh:
-                self.records = json.load(fh)
-        elif self.replay_file.endswith(".pickle"):
-            with open(self.replay_file, 'rb') as fh:
-                self.records = pickle.load(fh)
-        else:
-            raise ValueError("Invalid file extension provided for replay file")
+        with open(self.replay_file, 'rb') as fh:
+            self.records = json.load(fh)
 
     def pytest_configure(self):
         for module_name in modules_list:
