@@ -60,7 +60,10 @@ def init_replay(replay, object_name, records):
 
 
 def score(instance, args, kwargs, name):
-    caller = inspect.stack()[2]
+    caller = inspect.stack()[3]
+
+    print("Calculating", args, kwargs, name, caller[1:])
+    print("Verses", instance['args'], instance['kwargs'], instance['name'], instance['caller_file'], instance['caller_line'], instance['caller_function'])
 
     s = 0
     s += 100 if str(name) != str(instance['name']) else 0
@@ -71,6 +74,8 @@ def score(instance, args, kwargs, name):
     s += abs(caller[2] - instance['caller_line'])
     s += 100 if str(caller[1]) != str(instance['caller_file']) else 0
     s += 100 if str(caller[3]) != str(instance['caller_function']) else 0
+
+    print("Scored", s)
 
     return s
 
@@ -105,7 +110,8 @@ def replay_factory(name, records):
                 #     raise Exception("More than one zero scores", args,
                 #                     kwargs, cls.__name__,
                 #                     inspect.stack()[1], instances)
-                print("matched with", instances[0], args, kwargs,
+                print("matched", instances[0])
+                print("with", args, kwargs,
                       cls.__name__, inspect.stack()[1])
                 return init_replay(o, name, instances[0][1])
 
