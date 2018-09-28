@@ -2,6 +2,7 @@ import os
 import sys
 import types
 import inspect
+import json
 
 _orig_stdout = sys.stdout
 _orig_stderr = sys.stderr
@@ -93,23 +94,29 @@ def call_prepare_proxies(o, pr):
     return o
 
 
-def serialize_data(o):
-    if isinstance(o, dict):
-        return {k: serialize_data(v) for k, v in o.items()}
-    elif isinstance(o, list):
-        return [serialize_data(v) for v in o]
-    elif isinstance(o, tuple):
-        return tuple([serialize_data(v) for v in o])
-    elif inspect.isclass(o) and issubclass(o, object):
-        return repr(o)
-    elif inspect.isclass(o):
-        return repr(o)
-    elif inspect.isfunction(o):
-        return repr(o)
-    elif isinstance(o, base_types):
-        return o
-    safe_print("WARN: Unsupported serialize", type(o), o, type(o).__name__)
-    return repr(o)
+class JSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if hasattr(o, '__subject__'):
+            o = o.__subject__
+        elif isinstance(o, type):
+            return repr(o)
+        elif isinstance(o, types.InstanceType):
+            return repr(o)
+        elif inspect.isbuiltin(o):
+            return repr(o)
+        elif isinstance(o, types.ModuleType):
+            return repr(o)
+        elif isinstance(o, types.InstanceType):
+            return repr(o)
+        elif inspect.isclass(o):
+            return repr(o)
+        elif inspect.isfunction(o):
+            return repr(o)
+        try:
+            return super(JSONEncoder, self).default(o)
+        except TypeError:
+            safe_print("WARN: Unsupported serialize", type(o), o, type(o).__name__)
+            return repr(o)
 
 
 def init_record(record, subject, records, name):
@@ -171,8 +178,8 @@ def record_factory(name, value, parent_record):
                     cls.__init__(r, *args, **kwargs)
 
                 r = init_record(InstanceRecord(), r, parent_record[name], None)
-                r.__records__['args'] = serialize_data(args)
-                r.__records__['kwargs'] = serialize_data(kwargs)
+                r.__records__['args'] = args
+                r.__records__['kwargs'] = kwargs
                 if cls.__name__ == 'ProxyClass':
                     r.__records__['name'] = cls.__subject_name__
                 else:
@@ -249,8 +256,8 @@ class ObjectRecord(object):
     __value_type__ = "object"
 
     def __call__(self, *args, **kwargs):
-        calldesc = {'args': serialize_data(args),
-                    'kwargs': serialize_data(kwargs),
+        calldesc = {'args': args,
+                    'kwargs': kwargs,
                     'callback': {}}
         self.__records__.setdefault('data', []).append(calldesc)
 
@@ -266,7 +273,7 @@ class ObjectRecord(object):
         # serialize_data to a json serializaion encode/decode class.
         td = {}
         retval = record_factory('retval', original_retval, td)
-        calldesc['retval'] = serialize_data(td['retval'])
+        calldesc['retval'] = td['retval']
         return retval
 
     def __getattribute__(self, attr):
@@ -385,9 +392,10 @@ class OldInstanceRecord(ObjectRecord):
     __value_type__ = 'oldinstance'
 
 
-def get_records():
+def dump_records(records_file):
     global g_records
-    return g_records
+    with open(records_file, 'wb') as fh:
+        json.dump(g_records, fh, cls=JSONEncoder)
 
 
 def setup():

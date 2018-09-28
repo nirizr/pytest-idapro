@@ -226,8 +226,7 @@ class InternalDeferredPlugin(object):
         self.recv('quitting')
 
     def command_save_records(self):
-        fmt = os.path.splitext(self.record_file)[1][1:]
-        self.send('save_records', self.record_file, fmt)
+        self.send('save_records', self.record_file)
         self.recv('save_records', 'done')
 
     def send(self, *s):

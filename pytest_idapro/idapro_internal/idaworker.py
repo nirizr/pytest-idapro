@@ -142,7 +142,7 @@ class IdaWorker(object):
         return ("quitting",)
 
     @staticmethod
-    def command_save_records(dest_file, dest_format):
+    def command_save_records(dest_file):
         # we have to fetch proxy_module manually because of how it was loaded
         # from ida's python/init.py
         import sys
@@ -150,15 +150,5 @@ class IdaWorker(object):
             return ('save_records', 'failed')
         proxy_module = sys.modules['proxy_module']
 
-        if dest_format == "json":
-            import json
-            with open(dest_file, 'wb') as fh:
-                json.dump(proxy_module.get_records(), fh)
-            return ('save_records', 'done')
-        elif dest_format == "pickle":
-            import cPickle as pickle
-            with open(dest_file, 'wb') as fh:
-                pickle.dump(proxy_module.get_records(), fh)
-            return ('save_records', 'done')
-
-        return ('save_records', 'failed')
+        proxy_module.dump_records(dest_file)
+        return ('save_records', 'done')
