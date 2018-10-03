@@ -113,6 +113,10 @@ def serialize_data(o):
 
 
 def init_record(record, subject, records, name):
+    if hasattr(record, '__subject__') and record.__subject__ != subject:
+        raise Exception("Trying to override subject", record.__subject__,
+                        subject, name, record)
+
     record.__subject__ = subject
     record.__subject_name__ = name
 
