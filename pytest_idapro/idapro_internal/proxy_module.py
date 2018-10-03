@@ -163,6 +163,11 @@ def record_factory(name, value, parent_record):
                        parent_record[name])
         return value
     elif inspect.isclass(value) and issubclass(value, object):
+        if hasattr(value, '__subject__'):
+            value = value.__subject__
+        if not is_idamodule(value.__module__):
+            return value
+
         class ProxyClass(value):
             __value_type__ = 'class'
 
