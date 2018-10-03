@@ -52,11 +52,11 @@ def init_replay(replay, object_name, records):
     return replay
 
 
-def score(instance, args, kwargs, name):
-    caller = inspect.stack()[3]
-
+def instance_score(instance, name, args, kwargs, caller):
     print("Calculating", args, kwargs, name, caller[1:])
-    print("Verses", instance['args'], instance['kwargs'], instance['name'], instance['caller_file'], instance['caller_line'], instance['caller_function'])
+    print("Verses", instance['args'], instance['kwargs'], instance['name'],
+          instance['caller_file'], instance['caller_line'],
+          instance['caller_function'])
 
     s = 0
     s += 100 if str(name) != str(instance['name']) else 0
@@ -70,7 +70,35 @@ def score(instance, args, kwargs, name):
 
     print("Scored", s)
 
-    return s
+    return s, instance
+
+
+def instance_select(replay_cls, name, args, kwargs):
+    caller = inspect.stack()[2]
+    instances = replay_cls.__records__['data']
+    args = list(args)
+
+    def instance_score_wrap(instance):
+        return instance_score(instance, name, args, kwargs, caller)
+
+    instances = sorted(map(instance_score_wrap, instances))
+
+    if len(instances) == 0:
+        raise Exception("Failed matching", args, kwargs)
+    if instances[0][0] != 0:
+        raise Exception("Non zero score", args, kwargs, name, caller,
+                        instances[0])
+    # TODO: ideally this should be included but it fails for some tests when
+    # I'm guessting multiple instances are identical. Should validate and see
+    # if we can remove duplicates somewhere, preferably in the recording code
+    # if sum(1 for i in instances if i[0] == 0) > 1:
+    #     raise Exception("More than one zero scores", args, kwargs, name,
+    #                     caller, instances)
+
+    print("matched", instances[0])
+    print("with", args, kwargs, name, caller)
+
+    return instances[0][1]
 
 
 def replay_factory(name, records):
@@ -87,26 +115,9 @@ def replay_factory(name, records):
                       cls.__records__)
                 o = super(ClassReplay, cls).__new__(cls)
 
-                args = list(args)
-                data = cls.__records__['data']
+                instance = instance_select(cls, cls.__name__, args, kwargs)
 
-                def key_func(i):
-                    return score(i, args, kwargs, cls.__name__), i
-                instances = sorted(map(key_func, data))
-                if len(instances) == 0:
-                    raise Exception("Failed matching", args, kwargs)
-                # if instances[0][0] != 0:
-                #     raise Exception("Non zero score", args, kwargs,
-                #                     cls.__name__, inspect.stack()[1],
-                #                     instances[0])
-                # if sum(1 for i in instances if i[0] == 0) > 1:
-                #     raise Exception("More than one zero scores", args,
-                #                     kwargs, cls.__name__,
-                #                     inspect.stack()[1], instances)
-                print("matched", instances[0])
-                print("with", args, kwargs,
-                      cls.__name__, inspect.stack()[1])
-                return init_replay(o, name, instances[0][1])
+                return init_replay(o, name, instance)
 
         return init_replay(ClassReplay, name, record)
     elif value_type == 'function':
