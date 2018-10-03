@@ -143,7 +143,7 @@ def init_record(record, subject, records, name):
 
 
 def record_factory(name, value, parent_record):
-    if (isinstance(value, ObjectRecord) or
+    if (isinstance(value, AbstractRecord) or
         inspect.isbuiltin(value) or
         type(value).__name__ == "swigvarlink" or
         value is type):
@@ -164,7 +164,6 @@ def record_factory(name, value, parent_record):
         return value
     elif inspect.isclass(value) and issubclass(value, object):
         class ProxyClass(value):
-            __metaclass__ = init_record(TypeRecord, value, parent_record, 'class_obj')
             __value_type__ = 'class'
 
             def __new__(cls, *args, **kwargs):
@@ -209,51 +208,12 @@ def record_factory(name, value, parent_record):
         return value
 
     safe_print("WARN: record_factroy failed", value, name, type(value))
-    value = init_record(ObjectRecord(), value, parent_record, name)
+    value = init_record(AbstractRecord(), value, parent_record, name)
     return value
 
 
-def get_attribute(record, attr, getter):
-    if attr in ('__subject__', '__records__', '__subject_name__',
-                '__value_type__'):
-        return getter(record, attr)
-
-    value = getattr(record.__subject__, attr)
-    processed_value = record_factory(attr, value, record.__records__)
-    return processed_value
-
-
-def set_attribute(record, attr, value, setter):
-    if attr in ('__subject__', '__records__', '__subject_name__',
-                '__value_type__'):
-        setter(record, attr, value)
-    else:
-        setattr(record.__subject__, attr, value)
-
-
-class TypeRecord(type):
-    __value_type__ = "type"
-
-    def __getattribute__(self, attr):
-        if attr == "__subclasses__":
-            return lambda : []
-        try:
-            r = type.__getattribute__(self, attr)
-            safe_print("TYPE GET ATTR", attr, r, type.__getattribute__(self, '__subject__'))
-        except AttributeError:
-            r = get_attribute(self, attr, type.__getattribute__)
-            safe_print("TYPE GET SUBJECT ATTR", attr, r, type.__getattribute__(self, '__subject__'))
-        return r
-
-    def __setattr__(self, attr, value):
-        set_attribute(self, attr, value, type.__setattr__)
-
-    def __delattr__(self, attr):
-        delattr(self.__subject__, attr)
-
-
-class ObjectRecord(object):
-    __value_type__ = "object"
+class AbstractRecord(object):
+    __value_type__ = "unknown"
 
     def __call__(self, *args, **kwargs):
         calldesc = {'args': args,
@@ -276,11 +236,21 @@ class ObjectRecord(object):
         calldesc['retval'] = td['retval']
         return retval
 
-    def __getattribute__(self, attr):
-        return get_attribute(self, attr, object.__getattribute__)
+    def __getattribute__(self, attr, oga=object.__getattribute__):
+        if attr in ('__subject__', '__records__', '__subject_name__',
+                    '__value_type__'):
+            return oga(self, attr)
 
-    def __setattr__(self, attr, value):
-        set_attribute(self, attr, value, object.__setattr__)
+        value = getattr(self.__subject__, attr)
+        processed_value = record_factory(attr, value, self.__records__)
+        return processed_value
+
+    def __setattr__(self, attr, val, osa=object.__setattr__):
+        if attr in ('__subject__', '__records__', '__subject_name__',
+                    '__value_type__'):
+            osa(self, attr, val)
+        else:
+            setattr(self.__subject__, attr, val)
 
     def __delattr__(self, attr):
         delattr(self.__subject__, attr)
@@ -376,19 +346,25 @@ class ObjectRecord(object):
         return pow(ob, self.__subject__)
 
 
-class ModuleRecord(ObjectRecord):
+class ModuleRecord(AbstractRecord):
     __value_type__ = "module"
 
 
-class FunctionRecord(ObjectRecord):
+class FunctionRecord(AbstractRecord):
     __value_type__ = "function"
 
 
-class InstanceRecord(ObjectRecord):
+class InstanceRecord(AbstractRecord):
     __value_type__ = "instance"
 
+    def __getattribute__(self, attr, oga=object.__getattribute__):
+        try:
+            return super(InstanceRecord, self).__getattribute__(attr, oga)
+        except AttributeError:
+            return oga(self, attr)
 
-class OldInstanceRecord(ObjectRecord):
+
+class OldInstanceRecord(AbstractRecord):
     __value_type__ = 'oldinstance'
 
 
