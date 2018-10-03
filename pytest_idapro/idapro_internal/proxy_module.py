@@ -142,11 +142,21 @@ def init_record(record, subject, records, name):
     return record
 
 
+class ProxyClassBase(object):
+    pass
+
+
+class TypeRecordBase(type):
+    pass
+
+
 def record_factory(name, value, parent_record):
     if (isinstance(value, ObjectRecord) or
         inspect.isbuiltin(value) or
         type(value).__name__ == "swigvarlink" or
-        value is type):
+        value is type or
+        (inspect.isclass(value) and (issubclass(value, ProxyClassBase) or
+                                     issubclass(value, TypeRecordBase)))):
         return value
     elif inspect.isfunction(value) or inspect.ismethod(value):
         return init_record(FunctionRecord(), value, parent_record, name)
@@ -163,19 +173,55 @@ def record_factory(name, value, parent_record):
                        parent_record[name])
         return value
     elif inspect.isclass(value) and issubclass(value, object):
-        class ProxyClass(value):
+        if hasattr(value, '__subject__'):
+            value = value.__subject__
+        if not is_idamodule(value.__module__):
+            return value
+
+        class TypeRecord(TypeRecordBase):
+            __value_type__ = "type"
+
+            def __getattribute__(self, attr):
+                if attr in ('__subject__', '__records__', '__subject_name__',
+                            '__value_type__'):
+                    return type.__getattribute__(self, attr)
+
+                if attr == "__subclasses__":
+                    return lambda : []
+
+                if attr == "__new__":
+                    return type.__getattribute__(self, attr)
+
+                try:
+                    r = type.__getattribute__(self, attr)
+                    safe_print("TYPE GET ATTR", attr, r, self.__subject__)
+                except AttributeError:
+                    r = get_attribute(self, attr, type.__getattribute__)
+                    safe_print("TYPE GET SUBJECT ATTR", attr, r, self.__subject__)
+                return record_factory(attr, r, self.__records__)
+                return r
+
+            def __setattr__(self, attr, value):
+                set_attribute(self, attr, value, type.__setattr__)
+
+            def __delattr__(self, attr):
+                delattr(self.__subject__, attr)
+
+
+        class ProxyClass(value, ProxyClassBase):
             __metaclass__ = init_record(TypeRecord, value, parent_record, 'class_obj')
             __value_type__ = 'class'
 
             def __new__(cls, *args, **kwargs):
+                safe_print("INSTANCE CREATION", cls, args, kwargs)
                 r = super(ProxyClass, cls).__new__(cls, *args, **kwargs)
 
                 # __init__ method is not called by python if __new__
                 # returns an object that is not an instance of the same
                 # class type. We therefore have to call __init__ ourselves
                 # before returning a InstanceRecord
-                if hasattr(cls, '__init__'):
-                    cls.__init__(r, *args, **kwargs)
+                if hasattr(r, '__init__'):
+                    r.__init__(*args, **kwargs)
 
                 r = init_record(InstanceRecord(), r, parent_record[name], None)
                 r.__records__['args'] = args
@@ -196,7 +242,12 @@ def record_factory(name, value, parent_record):
                     return super(ProxyClass, self).__getattribute__(attr)
                 except AttributeError:
                     return oga(type(self), attr)
-        return init_record(ProxyClass, value, parent_record, name)
+
+            def __setattr__(self, attr, value):
+                safe_print("class proxy setattr", attr, value)
+                return super(ProxyClass, self).__setattr__(attr, value)
+
+        return init_record(ProxyClass, value, parent_record.setdefault(name, {}), None)
     elif isinstance(value, types.ModuleType):
         if is_idamodule(value.__name__):
             return init_record(ModuleRecord(), value, parent_record, name)
@@ -228,28 +279,9 @@ def set_attribute(record, attr, value, setter):
                 '__value_type__'):
         setter(record, attr, value)
     else:
+        record_factory(attr, value, record.__records__)
+        # TODO: swap value with returned Record value from record_factory?
         setattr(record.__subject__, attr, value)
-
-
-class TypeRecord(type):
-    __value_type__ = "type"
-
-    def __getattribute__(self, attr):
-        if attr == "__subclasses__":
-            return lambda : []
-        try:
-            r = type.__getattribute__(self, attr)
-            safe_print("TYPE GET ATTR", attr, r, type.__getattribute__(self, '__subject__'))
-        except AttributeError:
-            r = get_attribute(self, attr, type.__getattribute__)
-            safe_print("TYPE GET SUBJECT ATTR", attr, r, type.__getattribute__(self, '__subject__'))
-        return r
-
-    def __setattr__(self, attr, value):
-        set_attribute(self, attr, value, type.__setattr__)
-
-    def __delattr__(self, attr):
-        delattr(self.__subject__, attr)
 
 
 class ObjectRecord(object):
