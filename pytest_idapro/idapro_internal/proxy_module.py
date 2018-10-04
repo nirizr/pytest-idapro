@@ -115,7 +115,8 @@ class JSONEncoder(json.JSONEncoder):
         try:
             return super(JSONEncoder, self).default(o)
         except TypeError:
-            safe_print("WARN: Unsupported serialize", type(o), o, type(o).__name__)
+            safe_print("WARN: Unsupported serialize", type(o), o,
+                       type(o).__name__)
             return repr(o)
 
 
