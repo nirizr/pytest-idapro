@@ -217,6 +217,24 @@ def record_factory(name, value, parent_record):
     return value
 
 
+def get_attribute(record, attr, getter):
+    if attr in ('__subject__', '__records__', '__subject_name__',
+                '__value_type__'):
+        return getter(record, attr)
+
+    value = getattr(record.__subject__, attr)
+    processed_value = record_factory(attr, value, record.__records__)
+    return processed_value
+
+
+def set_attribute(record, attr, value, setter):
+    if attr in ('__subject__', '__records__', '__subject_name__',
+                '__value_type__'):
+        setter(record, attr, value)
+    else:
+        setattr(record.__subject__, attr, value)
+
+
 class AbstractRecord(object):
     __value_type__ = "unknown"
 
@@ -241,21 +259,11 @@ class AbstractRecord(object):
         calldesc['retval'] = td['retval']
         return retval
 
-    def __getattribute__(self, attr, oga=object.__getattribute__):
-        if attr in ('__subject__', '__records__', '__subject_name__',
-                    '__value_type__'):
-            return oga(self, attr)
+    def __getattribute__(self, attr):
+        return get_attribute(self, attr, object.__getattribute__)
 
-        value = getattr(self.__subject__, attr)
-        processed_value = record_factory(attr, value, self.__records__)
-        return processed_value
-
-    def __setattr__(self, attr, val, osa=object.__setattr__):
-        if attr in ('__subject__', '__records__', '__subject_name__',
-                    '__value_type__'):
-            osa(self, attr, val)
-        else:
-            setattr(self.__subject__, attr, val)
+    def __setattr__(self, attr, value):
+        set_attribute(self, attr, value, object.__setattr__)
 
     def __delattr__(self, attr):
         delattr(self.__subject__, attr)
@@ -364,7 +372,7 @@ class InstanceRecord(AbstractRecord):
 
     def __getattribute__(self, attr, oga=object.__getattribute__):
         try:
-            return super(InstanceRecord, self).__getattribute__(attr, oga)
+            return super(InstanceRecord, self).__getattribute__(attr)
         except AttributeError:
             return oga(self, attr)
 
