@@ -241,7 +241,16 @@ class AbstractRecord(object):
     def __call__(self, *args, **kwargs):
         calldesc = {'args': args,
                     'kwargs': kwargs,
+                    'name': self.__subject_name__,
                     'callback': {}}
+
+        # You'd imagine this is always true, right? well.. not in IDA ;)
+        if len(inspect.stack()) > 1:
+            caller = inspect.stack()[1]
+            calldesc['caller_file'] = caller[1]
+            calldesc['caller_line'] = caller[2]
+            calldesc['caller_function'] = caller[3]
+
         self.__records__.setdefault('data', []).append(calldesc)
 
         args = call_prepare_proxies(args, calldesc)
