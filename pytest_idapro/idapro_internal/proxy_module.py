@@ -94,30 +94,51 @@ def call_prepare_proxies(o, pr):
     return o
 
 
+# TODO: only have one copy of this
+# cleanup can be done only on replay's side. only reason to cleanup here
+# is to hide "private info" (addresses?..) or safe a few bytes.
+def clean_arg(arg):
+    """Cleanup argument's representation for comparison by removing the
+    terminating memory address"""
+
+    sarg = repr(arg)
+    if sarg[0] != '<':
+        return sarg
+
+    if len(sarg.split()) < 2:
+        return sarg
+
+    parts = sarg.split()
+    if parts[-2] == 'at' and parts[-1][-1] == '>' and parts[-1][:2] == '0x':
+        return " ".join(parts[:-2]) + '>'
+
+    return sarg
+
+
 class JSONEncoder(json.JSONEncoder):
     def default(self, o):
         if hasattr(o, '__subject__'):
             o = o.__subject__
         elif isinstance(o, type):
-            return repr(o)
+            return clean_arg(o)
         elif isinstance(o, types.InstanceType):
-            return repr(o)
+            return clean_arg(o)
         elif inspect.isbuiltin(o):
-            return repr(o)
+            return clean_arg(o)
         elif isinstance(o, types.ModuleType):
-            return repr(o)
+            return clean_arg(o)
         elif isinstance(o, types.InstanceType):
-            return repr(o)
+            return clean_arg(o)
         elif inspect.isclass(o):
-            return repr(o)
+            return clean_arg(o)
         elif inspect.isfunction(o):
-            return repr(o)
+            return clean_arg(o)
         try:
             return super(JSONEncoder, self).default(o)
         except TypeError:
             safe_print("WARN: Unsupported serialize", type(o), o,
                        type(o).__name__)
-            return repr(o)
+            return clean_arg(o)
 
 
 def init_record(record, subject, records, name):
