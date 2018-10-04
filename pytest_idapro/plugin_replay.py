@@ -52,6 +52,25 @@ def init_replay(replay, object_name, records):
     return replay
 
 
+# TODO: only have one copy of this
+def clean_arg(arg):
+    """Cleanup argument's representation for comparison by removing the
+    terminating memory address"""
+
+    sarg = repr(arg)
+    if sarg[0] != '<':
+        return arg
+
+    if len(sarg.split()) < 2:
+        return arg
+
+    parts = sarg.split()
+    if parts[-2] == 'at' and parts[-1][-1] == '>' and parts[-1][:2] == '0x':
+        return " ".join(parts[:-2]) + '>'
+
+    return arg
+
+
 def instance_score(instance, name, args, kwargs, caller):
     print("Calculating", args, kwargs, name, caller[1:])
     print("Verses", instance['args'], instance['kwargs'], instance['name'],
@@ -60,10 +79,10 @@ def instance_score(instance, name, args, kwargs, caller):
 
     s = 0
     s += 100 if str(name) != str(instance['name']) else 0
-    s += sum(10 for a1, a2 in zip(args, instance['args'])
-             if str(a1) != str(a2))
-    s += sum(10 for a1, a2 in zip(kwargs, instance['kwargs'])
-             if str(a1) != str(a2))
+    s += sum(10 for a, b in zip(args, instance['args'])
+             if clean_arg(a) != b)
+    s += sum(10 for a, b in zip(kwargs.items(), instance['kwargs'].items())
+             if a[0] != b[0] or clean_arg(a[1]) != b[1])
     s += abs(caller[2] - instance['caller_line'])
     s += 100 if str(caller[1]) != str(instance['caller_file']) else 0
     s += 100 if str(caller[3]) != str(instance['caller_function']) else 0
