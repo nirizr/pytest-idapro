@@ -8,6 +8,8 @@ import copy
 
 import logging
 
+from .idapro_internal.cov import CovReadOnlyController
+
 logging.basicConfig()
 log = logging.getLogger('pytest-idapro.internal.manager')
 
@@ -225,6 +227,11 @@ class InternalDeferredPlugin(object):
 
     def pytest_runtestloop(self, session):
         self.session = session
+
+        if self.config.pluginmanager.has_plugin('_cov'):
+            cov_plugin = self.config.pluginmanager.get_plugin('_cov')
+            CovReadOnlyController.silence(cov_plugin.cov_controller)
+
         try:
             self.ida_start()
             self.command_ping()
