@@ -8,8 +8,6 @@ import copy
 
 import logging
 
-from .idapro_internal.cov import CovReadOnlyController
-
 logging.basicConfig()
 log = logging.getLogger('pytest-idapro.internal.manager')
 
@@ -229,6 +227,7 @@ class InternalDeferredPlugin(object):
         self.session = session
 
         if self.config.pluginmanager.has_plugin('_cov'):
+            from .idapro_internal.cov import CovReadOnlyController
             cov_plugin = self.config.pluginmanager.get_plugin('_cov')
             CovReadOnlyController.silence(cov_plugin.cov_controller)
 
