@@ -58,10 +58,6 @@ class WorkerPlugin(BasePlugin):
     def pytest_internalerror(self, excrepr, excinfo):
         self.worker.send('internalerr', excrepr, excinfo)
 
-    # unsupported
-    def pytest_logwarning(self, message, code, nodeid, fslocation):
-        self.worker.send('logwarning', message, code, nodeid, fslocation)
-
     def pytest_sessionstart(self, session):
         self.worker.send('session', 'start')
 
