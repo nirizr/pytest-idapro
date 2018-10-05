@@ -218,10 +218,8 @@ def record_factory(name, value, parent_record):
                 return r
 
             def __getattribute__(self, attr, oga=object.__getattribute__):
-                try:
-                    return super(ProxyClass, self).__getattribute__(attr)
-                except AttributeError:
-                    return oga(type(self), attr)
+                return super(ProxyClass, self).__getattribute__(attr)
+
         return init_record(ProxyClass, value, parent_record, name)
     elif isinstance(value, types.ModuleType):
         if is_idamodule(value.__name__):
