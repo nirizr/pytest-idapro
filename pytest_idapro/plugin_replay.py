@@ -185,6 +185,12 @@ class AbstractReplay(object):
             def get_subclasses():
                 return oga(self, '__class__').__subclasses__
             return get_subclasses
+
+        try:
+            return oga(self, attr)
+        except AttributeError:
+            pass
+
         if attr not in records:
             raise ValueError("Missing attribute", attr, object_name, records)
 
