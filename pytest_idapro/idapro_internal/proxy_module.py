@@ -300,9 +300,6 @@ class AbstractRecord(object):
         except Exception as ex:
             record_factory('exception', ex, calldesc)
             raise
-        # TODO: to keep any retval related recorded data we should not pass
-        # a temp dict to this record_factory. instead, we should move
-        # serialize_data to a json serializaion encode/decode class.
         retval = record_factory('retval', original_retval, calldesc)
         return retval
 
