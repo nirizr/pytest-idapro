@@ -159,8 +159,6 @@ def replay_factory(name, records):
 
 
 class AbstractReplay(object):
-    __slots__ = ["__object_name__", "__records__"]
-
     def __getattribute__(self, attr):
         object_name = oga(self, '__object_name__')
         records = oga(self, '__records__')
