@@ -233,12 +233,9 @@ def record_factory(name, value, parent_record):
 
                 try:
                     r = super(ProxyClass, self).__getattribute__(attr)
-                    safe_print("CLASS Super")
                 except AttributeError:
                     r = getter(self, attr)
-                    safe_print("CLASS getter")
 
-                safe_print("CLASS Potentially missed attribute", attr, type(r))
                 r = record_factory(attr, r,
                                    self.__instance_records__.__records__)
                 return r
