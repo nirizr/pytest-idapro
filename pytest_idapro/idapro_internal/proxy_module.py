@@ -304,9 +304,7 @@ class AbstractRecord(object):
         # TODO: to keep any retval related recorded data we should not pass
         # a temp dict to this record_factory. instead, we should move
         # serialize_data to a json serializaion encode/decode class.
-        td = {}
-        retval = record_factory('retval', original_retval, td)
-        calldesc['retval'] = td['retval']
+        retval = record_factory('retval', original_retval, calldesc)
         return retval
 
     def __getattribute__(self, attr):
