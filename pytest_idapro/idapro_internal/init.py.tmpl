@@ -1,10 +1,10 @@
 from imp import load_source
 import sys
 
-proxy_module = load_source('proxy_module', "{idapro_internal_dir}/proxy_module.py")
-sys.modules['proxy_module'] = proxy_module
+record_module = load_source('record_module', "{idapro_internal_dir}/record_module.py")
+sys.modules['record_module'] = record_module
 
-proxy_module.setup()
+record_module.setup()
 
 ## This shouldn't be seen by a user, unless during a pytest-idapro runnning
 ## if you see this, especially if IDA is manfunctioning, remove all lines above

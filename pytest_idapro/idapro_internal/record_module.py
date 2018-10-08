@@ -22,9 +22,9 @@ def is_idamodule(fullname):
     return fullname.startswith("ida_")
 
 
-class ProxyModuleLoader(object):
+class RecordModuleLoader(object):
     def __init__(self):
-        super(ProxyModuleLoader, self).__init__()
+        super(RecordModuleLoader, self).__init__()
         self.loading = set()
 
     def find_module(self, fullname, path=None):
@@ -43,7 +43,7 @@ class ProxyModuleLoader(object):
         if fullname in sys.modules:
             return sys.modules[fullname]
 
-        # otherwise, we'll create a module proxy
+        # otherwise, we'll create a module record
         # lock itself from continuously claiming to find ida modules, so that
         # the call to __import__ will not reach here again causing an infinite
         # recursion
@@ -67,31 +67,31 @@ except NameError:
     base_types += (type(None),)
 
 
-def call_prepare_proxies(o, pr):
-    """Prepare proxy arguments for a proxied call
-    This is mostly about striping the proxy object, but will also re-wrap
+def call_prepare_records(o, pr):
+    """Prepare record arguments for a recorded call
+    This is mostly about striping the record object, but will also re-wrap
     functions passed as arguments, as those could be callback functions that
     should be called by the replay core when needed.
     """
     if isinstance(o, dict):
-        return {k: call_prepare_proxies(v, pr) for k, v in o.items()}
+        return {k: call_prepare_records(v, pr) for k, v in o.items()}
     elif isinstance(o, list):
-        return [call_prepare_proxies(v, pr) for v in o]
+        return [call_prepare_records(v, pr) for v in o]
     elif isinstance(o, tuple):
-        return tuple([call_prepare_proxies(v, pr) for v in o])
-    elif hasattr(o, '__subject__') or type(o).__name__ == 'ProxyClass':
+        return tuple([call_prepare_records(v, pr) for v in o])
+    elif hasattr(o, '__subject__') or type(o).__name__ == 'RecordClass':
         return o.__subject__
     elif inspect.isfunction(o):
-        # if object is an unproxied function, we'll need to proxy it
+        # if object is an unrecorded function, we'll need to record it
         # specifically for the call, so any callback functions will be
         # registered by us
         # TODO: this is unlikely but we will currently miss callbacks that
-        # are proxied objects
+        # are recorded objects
         return record_factory(o.__name__, o, pr['callback'])
     elif isinstance(o, base_types):
         return o
 
-    safe_print("WARN: default call_prepare_proxies", type(o), o,
+    safe_print("WARN: default call_prepare_records", type(o), o,
                type(o).__name__, hasattr(o, '__subject__'))
     return o
 
@@ -180,7 +180,7 @@ def record_factory(name, value, parent_record):
     elif inspect.isfunction(value) or inspect.ismethod(value):
         return init_record(FunctionRecord(), value, parent_record, name)
     elif inspect.isclass(value) and issubclass(value, BaseException):
-        # TODO: maybe exceptions should also be proxied as class instances
+        # TODO: maybe exceptions should also be recorded as class instances
         # instead of being specially treated? they have attributes etc and
         # right now args is manually handled in the next isinstance
         parent_record[name] = {'value_type': 'exception_class',
@@ -197,17 +197,17 @@ def record_factory(name, value, parent_record):
         if not is_idamodule(value.__module__):
             return value
 
-        class ProxyClass(value):
+        class RecordClass(value):
             __value_type__ = 'class'
 
             def __new__(cls, *args, **kwargs):
-                obj = super(ProxyClass, cls).__new__(cls, *args, **kwargs)
+                obj = super(RecordClass, cls).__new__(cls, *args, **kwargs)
 
                 r = init_record(InstanceRecord(), obj, parent_record[name],
                                 None)
                 r.__records__['args'] = args
                 r.__records__['kwargs'] = kwargs
-                if cls.__name__ == 'ProxyClass':
+                if cls.__name__ == 'RecordClass':
                     r.__records__['name'] = cls.__subject_name__
                 else:
                     r.__records__['name'] = cls.__name__
@@ -236,7 +236,7 @@ def record_factory(name, value, parent_record):
                     return oga(self, '__class__')
 
                 try:
-                    r = super(ProxyClass, self).__getattribute__(attr)
+                    r = super(RecordClass, self).__getattribute__(attr)
                 except AttributeError:
                     r = oga(self, attr)
 
@@ -244,7 +244,7 @@ def record_factory(name, value, parent_record):
                                    self.__instance_records__.__records__)
                 return r
 
-        return init_record(ProxyClass, value, parent_record, name)
+        return init_record(RecordClass, value, parent_record, name)
     elif isinstance(value, types.ModuleType):
         if is_idamodule(value.__name__):
             return init_record(ModuleRecord(), value, parent_record, name)
@@ -279,8 +279,8 @@ class AbstractRecord(object):
 
         self.__records__.setdefault('data', []).append(calldesc)
 
-        args = call_prepare_proxies(args, calldesc)
-        kwargs = call_prepare_proxies(kwargs, calldesc)
+        args = call_prepare_records(args, calldesc)
+        kwargs = call_prepare_records(kwargs, calldesc)
         try:
             original_retval = self.__subject__(*args, **kwargs)
         except Exception as ex:
@@ -334,7 +334,7 @@ class AbstractRecord(object):
         return ob in self.__subject__
 
     # Ugly code definitions for all special python methods
-    # this will forward all unique method calls to the proxied object
+    # this will forward all unique method calls to the recorded object
     for name in ('repr', 'str', 'hash', 'len', 'abs', 'complex', 'int', 'long',
                  'float', 'iter', 'oct', 'hex', 'bool', 'operator.index',
                  'math.trunc'):
@@ -428,4 +428,4 @@ def dump_records(records_file):
 
 
 def setup():
-    sys.meta_path.insert(0, ProxyModuleLoader())
+    sys.meta_path.insert(0, RecordModuleLoader())
