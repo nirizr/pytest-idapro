@@ -261,24 +261,6 @@ def record_factory(name, value, parent_record):
     return value
 
 
-def get_attribute(record, attr):
-    if attr in ('__subject__', '__records__', '__subject_name__',
-                '__value_type__'):
-        return oga(record, attr)
-
-    value = getattr(record.__subject__, attr)
-    processed_value = record_factory(attr, value, record.__records__)
-    return processed_value
-
-
-def set_attribute(record, attr, value):
-    if attr in ('__subject__', '__records__', '__subject_name__',
-                '__value_type__'):
-        osa(record, attr, value)
-    else:
-        setattr(record.__subject__, attr, value)
-
-
 class AbstractRecord(object):
     __value_type__ = "unknown"
 
@@ -308,10 +290,20 @@ class AbstractRecord(object):
         return retval
 
     def __getattribute__(self, attr):
-        return get_attribute(self, attr)
+        if attr in ('__subject__', '__records__', '__subject_name__',
+                    '__value_type__'):
+            return oga(record, attr)
+
+        value = getattr(record.__subject__, attr)
+        processed_value = record_factory(attr, value, record.__records__)
+        return processed_value
 
     def __setattr__(self, attr, value):
-        set_attribute(self, attr, value)
+        if attr in ('__subject__', '__records__', '__subject_name__',
+                    '__value_type__'):
+            osa(record, attr, value)
+        else:
+            setattr(record.__subject__, attr, value)
 
     def __delattr__(self, attr):
         delattr(self.__subject__, attr)
