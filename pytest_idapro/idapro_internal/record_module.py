@@ -4,6 +4,8 @@ import types
 import inspect
 import json
 
+from .utils import oga, osa, clean_arg
+
 _orig_stdout = sys.stdout
 _orig_stderr = sys.stderr
 
@@ -94,31 +96,6 @@ def call_prepare_records(o, pr):
     safe_print("WARN: default call_prepare_records", type(o), o,
                type(o).__name__, hasattr(o, '__subject__'))
     return o
-
-
-# TODO: only have one copy of this
-# cleanup can be done only on replay's side. only reason to cleanup here
-# is to hide "private info" (addresses?..) or safe a few bytes.
-oga = object.__getattribute__
-osa = object.__setattr__
-
-
-def clean_arg(arg):
-    """Cleanup argument's representation for comparison by removing the
-    terminating memory address"""
-
-    sarg = repr(arg)
-    if sarg[0] != '<':
-        return sarg
-
-    if len(sarg.split()) < 2:
-        return sarg
-
-    parts = sarg.split()
-    if parts[-2] == 'at' and parts[-1][-1] == '>' and parts[-1][:2] == '0x':
-        return " ".join(parts[:-2]) + '>'
-
-    return sarg
 
 
 class JSONEncoder(json.JSONEncoder):
