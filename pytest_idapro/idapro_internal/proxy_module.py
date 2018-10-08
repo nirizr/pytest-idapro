@@ -222,8 +222,24 @@ def record_factory(name, value, parent_record):
 
                 return r
 
-            def __getattribute__(self, attr, oga=object.__getattribute__):
-                return super(ProxyClass, self).__getattribute__(attr)
+            def __getattribute__(self, attr, getter=object.__getattribute__):
+                if attr in ('__subject__', '__records__', '__subject_name__',
+                            '__value_type__', '__instance_records__'):
+                    return getter(self, attr)
+
+                if attr == "__class__":
+                    return getter(self, '__class__')
+
+                try:
+                    r = super(ProxyClass, self).__getattribute__(attr)
+                    safe_print("CLASS Super")
+                except AttributeError:
+                    r = getter(self, attr)
+                    safe_print("CLASS getter")
+
+                safe_print("CLASS Potentially missed attribute", attr, type(r))
+                r = record_factory(attr, r, self.__instance_records__.__records__)
+                return r
 
         return init_record(ProxyClass, value, parent_record, name)
     elif isinstance(value, types.ModuleType):
