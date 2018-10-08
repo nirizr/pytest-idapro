@@ -1,9 +1,12 @@
 import json
-import sys
 
 from .idapro_internal import replay_module
 
-from .plugin_mock import MockDeferredPlugin, modules_list
+from .plugin_mock import MockDeferredPlugin
+
+
+module_aliases = {'ida_area': 'ida_range', 'ida_ints': 'ida_bytes',
+                  'ida_queue': 'ida_problems', 'ida_srarea': 'ida_segregs'}
 
 
 class ReplayDeferredPlugin(MockDeferredPlugin):
@@ -16,18 +19,7 @@ class ReplayDeferredPlugin(MockDeferredPlugin):
         with open(self.replay_file, 'rb') as fh:
             self.records = json.load(fh)
 
-    def pytest_configure(self):
-        for module_name in modules_list:
-            t = {'ida_area': 'ida_range', 'ida_ints': 'ida_bytes',
-                 'ida_queue': 'ida_problems', 'ida_srarea': 'ida_segregs'}
-            module_name = t.get(module_name, module_name)
-            module_record = self.records[module_name]
-            module = replay_module.module_replay(module_name, module_record)
-            sys.modules[module_name] = module
-
-    @staticmethod
-    def pytest_unconfigure():
-        for module in modules_list:
-            if module not in sys.modules:
-                continue
-            del sys.modules[module]
+    def get_module(self, module_name):
+        module_name = module_aliases.get(module_name, module_name)
+        module_record = self.records[module_name]
+        return replay_module.module_replay(module_name, module_record)
