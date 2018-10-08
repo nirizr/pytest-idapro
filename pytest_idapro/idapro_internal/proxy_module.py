@@ -90,8 +90,9 @@ def call_prepare_proxies(o, pr):
         return record_factory(o.__name__, o, pr['callback'])
     elif isinstance(o, base_types):
         return o
+
     safe_print("WARN: default call_prepare_proxies", type(o), o,
-               type(o).__name__)
+               type(o).__name__, hasattr(o, '__subject__'))
     return o
 
 
