@@ -46,6 +46,10 @@ def init_replay(replay, object_name, records):
 
 
 # TODO: only have one copy of this
+oga = object.__getattribute__
+osa = object.__setattr__
+
+
 def clean_arg(arg):
     """Cleanup argument's representation for comparison by removing the
     terminating memory address"""
@@ -157,7 +161,7 @@ def replay_factory(name, records):
 class AbstractReplay(object):
     __slots__ = ["__object_name__", "__records__"]
 
-    def __getattribute__(self, attr, oga=object.__getattribute__):
+    def __getattribute__(self, attr):
         object_name = oga(self, '__object_name__')
         records = oga(self, '__records__')
         if attr == '__object_name__' or attr == '__name__':
@@ -189,7 +193,7 @@ class AbstractReplay(object):
 
         return replay_factory(attr, records)
 
-    def __setattr__(self, attr, val, osa=object.__setattr__):
+    def __setattr__(self, attr, val):
         if attr == '__object_name__' or attr == '__records__':
             osa(self, attr, val)
         else:
