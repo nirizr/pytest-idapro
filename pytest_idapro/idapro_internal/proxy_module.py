@@ -197,16 +197,9 @@ def record_factory(name, value, parent_record):
             __value_type__ = 'class'
 
             def __new__(cls, *args, **kwargs):
-                r = super(ProxyClass, cls).__new__(cls, *args, **kwargs)
+                obj = super(ProxyClass, cls).__new__(cls, *args, **kwargs)
 
-                # __init__ method is not called by python if __new__
-                # returns an object that is not an instance of the same
-                # class type. We therefore have to call __init__ ourselves
-                # before returning a InstanceRecord
-                if hasattr(cls, '__init__'):
-                    cls.__init__(r, *args, **kwargs)
-
-                r = init_record(InstanceRecord(), r, parent_record[name], None)
+                r = init_record(InstanceRecord(), obj, parent_record[name], None)
                 r.__records__['args'] = args
                 r.__records__['kwargs'] = kwargs
                 if cls.__name__ == 'ProxyClass':
@@ -217,6 +210,15 @@ def record_factory(name, value, parent_record):
                 r.__records__['caller_file'] = caller[1]
                 r.__records__['caller_line'] = caller[2]
                 r.__records__['caller_function'] = caller[3]
+
+                obj.__instance_records__ = r
+
+                # __init__ method is not called by python if __new__
+                # returns an object that is not an instance of the same
+                # class type. We therefore have to call __init__ ourselves
+                # before returning a InstanceRecord
+                if hasattr(cls, '__init__'):
+                    cls.__init__(obj, *args, **kwargs)
 
                 return r
 
