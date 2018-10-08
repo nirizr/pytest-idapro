@@ -143,12 +143,12 @@ class IdaWorker(object):
 
     @staticmethod
     def command_save_records(dest_file):
-        # we have to fetch proxy_module manually because of how it was loaded
+        # we have to fetch record_module manually because of how it was loaded
         # from ida's python/init.py
         import sys
-        if 'proxy_module' not in sys.modules:
+        if 'record_module' not in sys.modules:
             return ('save_records', 'failed')
-        proxy_module = sys.modules['proxy_module']
+        record_module = sys.modules['record_module']
 
-        proxy_module.dump_records(dest_file)
+        record_module.dump_records(dest_file)
         return ('save_records', 'done')

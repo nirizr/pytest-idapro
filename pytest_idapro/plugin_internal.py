@@ -33,14 +33,14 @@ class InternalDeferredPlugin(object):
 
         idapro_internal_dir = os.path.join(os.path.dirname(__file__),
                                            "idapro_internal")
-        proxy_module_template = os.path.join(idapro_internal_dir,
-                                             "init.py.tmpl")
+        record_module_template = os.path.join(idapro_internal_dir,
+                                              "init.py.tmpl")
         ida_python_init = os.path.join(os.path.dirname(self.ida_path),
                                        "python", "init.py")
 
         if self.record_file:
-            self.install_proxy_module(idapro_internal_dir,
-                                      proxy_module_template, ida_python_init)
+            self.install_record_module(idapro_internal_dir,
+                                       record_module_template, ida_python_init)
 
         try:
             script_args = '{}'.format(self.listener.address)
@@ -63,8 +63,8 @@ class InternalDeferredPlugin(object):
             self.listener = None
         finally:
             if self.record_file:
-                self.uninstall_proxy_module(proxy_module_template,
-                                            ida_python_init)
+                self.uninstall_record_module(record_module_template,
+                                             ida_python_init)
 
     def ida_finish(self, interrupted):
         self.stop = True
@@ -90,9 +90,9 @@ class InternalDeferredPlugin(object):
         self.proc.kill()
 
     @staticmethod
-    def install_proxy_module(idapro_internal_dir, proxy_module_template,
-                             ida_python_init):
-        with open(proxy_module_template, 'r') as fh:
+    def install_record_module(idapro_internal_dir, record_module_template,
+                              ida_python_init):
+        with open(record_module_template, 'r') as fh:
             lines = [line.format(idapro_internal_dir=idapro_internal_dir)
                      for line in fh.readlines()]
         with open(ida_python_init, 'r') as fh:
@@ -101,8 +101,8 @@ class InternalDeferredPlugin(object):
             fh.writelines(lines)
 
     @staticmethod
-    def uninstall_proxy_module(proxy_module_template, ida_python_init):
-        with open(proxy_module_template, 'r') as fh:
+    def uninstall_record_module(record_module_template, ida_python_init):
+        with open(record_module_template, 'r') as fh:
             lastline = fh.readlines()[-1]
         lines = []
         with open(ida_python_init, 'r') as fh:

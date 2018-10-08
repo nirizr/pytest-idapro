@@ -143,8 +143,6 @@ def replay_factory(name, records):
         return init_replay(ClassReplay, name, record)
     elif value_type == 'function':
         return init_replay(FunctionReplay(), name, record)
-    elif value_type == 'proxy':
-        return init_replay(AbstractReplay(), name, record['data'])
     elif value_type == 'exception':
         # TODO: make sure there's a msg in here
         cls = replay_factory('exception_class', record)
@@ -176,7 +174,7 @@ class AbstractReplay(object):
                                                            records.get(attr,
                                                                        None)))
 
-        # TODO: this should probably done better, really proxy those (and
+        # TODO: this should probably done better, really record those (and
         # other) values.
         if attr == "__bases__":
             return tuple()
