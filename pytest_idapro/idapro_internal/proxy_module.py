@@ -199,7 +199,8 @@ def record_factory(name, value, parent_record):
             def __new__(cls, *args, **kwargs):
                 obj = super(ProxyClass, cls).__new__(cls, *args, **kwargs)
 
-                r = init_record(InstanceRecord(), obj, parent_record[name], None)
+                r = init_record(InstanceRecord(), obj, parent_record[name],
+                                None)
                 r.__records__['args'] = args
                 r.__records__['kwargs'] = kwargs
                 if cls.__name__ == 'ProxyClass':
@@ -238,7 +239,8 @@ def record_factory(name, value, parent_record):
                     safe_print("CLASS getter")
 
                 safe_print("CLASS Potentially missed attribute", attr, type(r))
-                r = record_factory(attr, r, self.__instance_records__.__records__)
+                r = record_factory(attr, r,
+                                   self.__instance_records__.__records__)
                 return r
 
         return init_record(ProxyClass, value, parent_record, name)
