@@ -99,6 +99,10 @@ def call_prepare_proxies(o, pr):
 # TODO: only have one copy of this
 # cleanup can be done only on replay's side. only reason to cleanup here
 # is to hide "private info" (addresses?..) or safe a few bytes.
+oga = object.__getattribute__
+osa = object.__setattr__
+
+
 def clean_arg(arg):
     """Cleanup argument's representation for comparison by removing the
     terminating memory address"""
@@ -223,18 +227,18 @@ def record_factory(name, value, parent_record):
 
                 return r
 
-            def __getattribute__(self, attr, getter=object.__getattribute__):
+            def __getattribute__(self, attr):
                 if attr in ('__subject__', '__records__', '__subject_name__',
                             '__value_type__', '__instance_records__'):
-                    return getter(self, attr)
+                    return oga(self, attr)
 
                 if attr == "__class__":
-                    return getter(self, '__class__')
+                    return oga(self, '__class__')
 
                 try:
                     r = super(ProxyClass, self).__getattribute__(attr)
                 except AttributeError:
-                    r = getter(self, attr)
+                    r = oga(self, attr)
 
                 r = record_factory(attr, r,
                                    self.__instance_records__.__records__)
@@ -257,20 +261,20 @@ def record_factory(name, value, parent_record):
     return value
 
 
-def get_attribute(record, attr, getter):
+def get_attribute(record, attr):
     if attr in ('__subject__', '__records__', '__subject_name__',
                 '__value_type__'):
-        return getter(record, attr)
+        return oga(record, attr)
 
     value = getattr(record.__subject__, attr)
     processed_value = record_factory(attr, value, record.__records__)
     return processed_value
 
 
-def set_attribute(record, attr, value, setter):
+def set_attribute(record, attr, value):
     if attr in ('__subject__', '__records__', '__subject_name__',
                 '__value_type__'):
-        setter(record, attr, value)
+        osa(record, attr, value)
     else:
         setattr(record.__subject__, attr, value)
 
@@ -304,10 +308,10 @@ class AbstractRecord(object):
         return retval
 
     def __getattribute__(self, attr):
-        return get_attribute(self, attr, object.__getattribute__)
+        return get_attribute(self, attr)
 
     def __setattr__(self, attr, value):
-        set_attribute(self, attr, value, object.__setattr__)
+        set_attribute(self, attr, value)
 
     def __delattr__(self, attr):
         delattr(self.__subject__, attr)
@@ -414,7 +418,7 @@ class FunctionRecord(AbstractRecord):
 class InstanceRecord(AbstractRecord):
     __value_type__ = "instance"
 
-    def __getattribute__(self, attr, oga=object.__getattribute__):
+    def __getattribute__(self, attr):
         try:
             return super(InstanceRecord, self).__getattribute__(attr)
         except AttributeError:
