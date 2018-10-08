@@ -253,7 +253,7 @@ def record_factory(name, value, parent_record):
             parent_record[name] = {'value_type': 'value', 'data': value}
         return value
 
-    safe_print("WARN: record_factroy failed", value, name, type(value))
+    safe_print("WARN: record_factory failed", value, name, type(value))
     value = init_record(AbstractRecord(), value, parent_record, name)
     return value
 
