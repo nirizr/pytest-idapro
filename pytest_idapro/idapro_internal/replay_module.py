@@ -4,6 +4,8 @@ try:
 except ImportError:
     import builtins as exceptions
 
+from .utils import oga, osa, clean_arg
+
 
 def module_replay(module_name, module_record):
     return init_replay(ModuleReplay(), module_name, module_record)
@@ -15,29 +17,6 @@ def init_replay(replay, object_name, records):
     replay.__name__ = object_name
 
     return replay
-
-
-# TODO: only have one copy of this
-oga = object.__getattribute__
-osa = object.__setattr__
-
-
-def clean_arg(arg):
-    """Cleanup argument's representation for comparison by removing the
-    terminating memory address"""
-
-    sarg = repr(arg)
-    if sarg[0] != '<':
-        return arg
-
-    if len(sarg.split()) < 2:
-        return arg
-
-    parts = sarg.split()
-    if parts[-2] == 'at' and parts[-1][-1] == '>' and parts[-1][:2] == '0x':
-        return " ".join(parts[:-2]) + '>'
-
-    return arg
 
 
 def instance_score(instance, name, args, kwargs, caller):
