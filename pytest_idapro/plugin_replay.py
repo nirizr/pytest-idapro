@@ -202,21 +202,13 @@ class ModuleReplay(AbstractReplay):
 
 class FunctionReplay(AbstractReplay):
     def __call__(self, *args, **kwargs):
-        # if we don't have calls recorded, just return None as a guess value
-        # TODO: this shouldn't happen so fail if it does. remove this in the
-        # future
-        # if not self.__records__['data']:
-        #    return None
-
-        # TODO: improve logic over just picking the first available
-        # based on matching variables or something
         instance = instance_select(self, self.__name__, args, kwargs)
 
         if 'callback' in instance and instance['callback']:
             for arg in args + tuple(kwargs.values()):
-                # TODO: improve logic over just picking the first available
                 if not inspect.isfunction(arg):
                     continue
+                # TODO: improve logic over just picking the first available
                 arg_data = instance['callback'][arg.__name__]['data'][0]
                 if not arg_data:
                     continue
