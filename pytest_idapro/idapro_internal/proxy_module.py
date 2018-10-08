@@ -13,6 +13,7 @@ _orig_stderr = sys.stderr
 # recursion :)
 def safe_print(*args):
     _orig_stdout.write(str(args) + "\n")
+    _orig_stdout.flush()
 
 
 def is_idamodule(fullname):
