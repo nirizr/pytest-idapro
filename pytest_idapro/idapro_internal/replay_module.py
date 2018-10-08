@@ -20,11 +20,6 @@ def init_replay(replay, object_name, records):
 
 
 def instance_score(instance, name, args, kwargs, caller):
-    print("Calculating", args, kwargs, name, caller[1:])
-    print("Verses", instance['args'], instance['kwargs'], instance['name'],
-          instance['caller_file'], instance['caller_line'],
-          instance['caller_function'])
-
     s = 0
     s += 100 if str(name) != str(instance['name']) else 0
     s += sum(10 for a, b in zip(args, instance['args'])
@@ -34,8 +29,6 @@ def instance_score(instance, name, args, kwargs, caller):
     s += abs(caller[2] - instance['caller_line'])
     s += 100 if str(caller[1]) != str(instance['caller_file']) else 0
     s += 100 if str(caller[3]) != str(instance['caller_function']) else 0
-
-    print("Scored", s)
 
     return s, instance
 
@@ -62,9 +55,6 @@ def instance_select(replay_cls, name, args, kwargs):
     #     raise Exception("More than one zero scores", args, kwargs, name,
     #                     caller, instances)
 
-    print("matched", instances[0])
-    print("with", args, kwargs, name, caller)
-
     return instances[0][1]
 
 
@@ -78,8 +68,6 @@ def replay_factory(name, records):
     elif value_type == 'class':
         class ClassReplay(AbstractReplay):
             def __new__(cls, *args, **kwargs):
-                print("classreplay.__new__", cls, args, kwargs,
-                      cls.__records__)
                 o = super(ClassReplay, cls).__new__(cls)
 
                 instance = instance_select(cls, cls.__name__, args, kwargs)
@@ -115,10 +103,6 @@ class AbstractReplay(object):
             return object_name
         elif attr == '__records__':
             return records
-
-        print("getattr called for {} in {} with {}".format(attr, object_name,
-                                                           records.get(attr,
-                                                                       None)))
 
         # TODO: this should probably done better, really record those (and
         # other) values.
@@ -163,7 +147,6 @@ class FunctionReplay(AbstractReplay):
                 arg_data = instance['callback'][arg.__name__]['data'][0]
                 if not arg_data:
                     continue
-                print("calling {} with {}".format(arg, arg_data))
                 arg(*arg_data['args'], **arg_data['kwargs'])
                 # TODO: validate return value is correct
 
