@@ -24,18 +24,25 @@ modules_list.extend(['idaapi', 'idc', 'idautils'])
 class MockDeferredPlugin(BasePlugin):
     def __init__(self, *args, **kwargs):
         super(MockDeferredPlugin, self).__init__(*args, **kwargs)
-        self.qapp = None
-        self.tapp = None
+        self.app = None
+        self.app_menu = None
+        self.app_window = None
+        self.app_thread = None
+
+    @classmethod
+    def pytest_configure(cls):
+        for module_name in modules_list:
+            sys.modules[module_name] = cls.get_module(module_name)
 
     @staticmethod
-    def pytest_configure():
-        for module_name in modules_list:
-            module = getattr(idapro_mock, module_name)
-            sys.modules[module_name] = module
+    def get_module(module_name):
+        return getattr(idapro_mock, module_name)
 
     @staticmethod
     def pytest_unconfigure():
         for module in modules_list:
+            if module not in sys.modules:
+                continue
             del sys.modules[module]
 
         # TODO: if this is deleted here it should also be created in
@@ -45,14 +52,34 @@ class MockDeferredPlugin(BasePlugin):
             shutil.rmtree(idapro_mock.idc.tempidadir)
             idapro_mock.idc.tempidadir = None
 
-    @pytest.fixture(scope='session')
-    def idapro_app(self):
-        self.qapp = QtWidgets.QApplication([])
-        qmainwin = QtWidgets.QMainWindow()
+    def pytest_sessionstart(self):
+        # Create main Qt objects
+        self.app = QtWidgets.QApplication([])
         qmdiarea = QtWidgets.QMdiArea()
-        qmainwin.setCentralWidget(qmdiarea)
-        qmenu = QtWidgets.QMenu()
-        qmainwin.setMenuWidget(qmenu)
-        self.tapp = threading.Thread(target=self.qapp.exec_)
-        self.tapp.start()
-        yield self.qapp
+        self.app_menu = QtWidgets.QMenu()
+
+        # Create and initialize QMainWindow
+        self.app_window = QtWidgets.QMainWindow()
+        self.app_window.setCentralWidget(qmdiarea)
+        self.app_window.setMenuWidget(self.app_menu)
+        self.app_window.show()
+
+        # Create and start a Qt main thread
+        self.app_thread = threading.Thread(target=self.app.exec_)
+        self.app_thread.start()
+
+    @pytest.fixture()
+    def idapro_app(self):
+        return self.app
+
+    @pytest.fixture()
+    def idapro_app_window(self):
+        return self.app_window
+
+    @pytest.fixture()
+    def idapro_app_menu(self):
+        return self.app_menu
+
+    @pytest.fixture()
+    def idapro_app_thread(self):
+        return self.app_thread
