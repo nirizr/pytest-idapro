@@ -169,8 +169,9 @@ def init_record(record, subject, records, name):
 def record_factory(name, value, parent_record):
     if (isinstance(value, AbstractRecord) or
         inspect.isbuiltin(value) or
-        type(value).__name__ == "swigvarlink" or
-        value is type):
+        type(value).__name__ in ("swigvarlink", "PyCObject") or
+        value is type or
+        type(value).__name__[0] == "Q"):
         return value
     elif inspect.isfunction(value) or inspect.ismethod(value):
         return init_record(FunctionRecord(), value, parent_record, name)
