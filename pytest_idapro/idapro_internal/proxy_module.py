@@ -292,18 +292,18 @@ class AbstractRecord(object):
     def __getattribute__(self, attr):
         if attr in ('__subject__', '__records__', '__subject_name__',
                     '__value_type__'):
-            return oga(record, attr)
+            return oga(self, attr)
 
-        value = getattr(record.__subject__, attr)
-        processed_value = record_factory(attr, value, record.__records__)
+        value = getattr(self.__subject__, attr)
+        processed_value = record_factory(attr, value, self.__records__)
         return processed_value
 
     def __setattr__(self, attr, value):
         if attr in ('__subject__', '__records__', '__subject_name__',
                     '__value_type__'):
-            osa(record, attr, value)
+            osa(self, attr, value)
         else:
-            setattr(record.__subject__, attr, value)
+            setattr(self.__subject__, attr, value)
 
     def __delattr__(self, attr):
         delattr(self.__subject__, attr)
