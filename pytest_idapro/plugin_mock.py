@@ -14,9 +14,10 @@ modules_list = ['ida_allins', 'ida_area', 'ida_auto', 'ida_bytes', 'ida_dbg',
                 'ida_hexrays', 'ida_ida', 'ida_idaapi', 'ida_idd', 'ida_idp',
                 'ida_ints', 'ida_kernwin', 'ida_lines', 'ida_loader',
                 'ida_moves', 'ida_nalt', 'ida_name', 'ida_netnode',
-                'ida_offset', 'ida_pro', 'ida_queue', 'ida_registry',
-                'ida_search', 'ida_segment', 'ida_srarea', 'ida_strlist',
-                'ida_struct', 'ida_typeinf', 'ida_ua', 'ida_xref']
+                'ida_offset', 'ida_pro', 'ida_problems', 'ida_queue',
+                'ida_registry', 'ida_search', 'ida_segment', 'ida_segregs',
+                'ida_srarea', 'ida_strlist', 'ida_struct', 'ida_typeinf',
+                'ida_ua', 'ida_xref', 'ida_range']
 modules_list.extend(['idaapi', 'idc', 'idautils'])
 
 
@@ -27,17 +28,13 @@ class MockDeferredPlugin(BasePlugin):
         self.tapp = None
 
     @staticmethod
-    def pytest_configure(config):
-        del config
-
+    def pytest_configure():
         for module_name in modules_list:
             module = getattr(idapro_mock, module_name)
             sys.modules[module_name] = module
 
     @staticmethod
-    def pytest_unconfigure(config):
-        del config
-
+    def pytest_unconfigure():
         for module in modules_list:
             del sys.modules[module]
 

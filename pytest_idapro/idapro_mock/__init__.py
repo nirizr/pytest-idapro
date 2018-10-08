@@ -33,10 +33,13 @@ from . import ida_name
 from . import ida_netnode
 from . import ida_offset
 from . import ida_pro
+from . import ida_problems
 from . import ida_queue
+from . import ida_range
 from . import ida_registry
 from . import ida_search
 from . import ida_segment
+from . import ida_segregs
 from . import ida_srarea
 from . import ida_strlist
 from . import ida_struct
