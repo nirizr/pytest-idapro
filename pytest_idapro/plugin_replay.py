@@ -27,14 +27,7 @@ class ReplayDeferredPlugin(MockDeferredPlugin):
 
     def pytest_configure(self):
         for module_name in modules_list:
-            if module_name in self.records:
-                module_record = self.records[module_name]
-            else:
-                # TODO: get a generic solution for this hack
-                # translate alias library names
-                t = {'ida_area': 'ida_range', 'ida_ints': 'ida_bytes',
-                     'ida_queue': 'ida_problems', 'ida_srarea': 'ida_segregs'}
-                module_record = self.records[t[module_name]]
+            module_record = self.records[module_name]
             module = init_replay(ModuleReplay(), module_name, module_record)
             sys.modules[module_name] = module
 
