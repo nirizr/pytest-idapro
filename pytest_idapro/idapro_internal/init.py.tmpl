@@ -1,7 +1,15 @@
-from imp import load_source
+from imp import load_source, find_module, load_module
 import sys
 
-record_module = load_source('record_module', "{idapro_internal_dir}/record_module.py")
+found_result = find_module('idapro_internal', ["{idapro_internal_dir}"])
+fp, pathname, description = found_result
+try:
+    idapro_internal = load_module('idapro_internal', fp, pathname, description)
+finally:
+    if fp:
+        fp.close()
+
+from idapro_internal import record_module
 sys.modules['record_module'] = record_module
 
 record_module.setup()

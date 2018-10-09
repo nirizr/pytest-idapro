@@ -31,9 +31,9 @@ class InternalDeferredPlugin(object):
         internal_script = os.path.join(os.path.dirname(__file__),
                                        "main_idaworker.py")
 
-        idapro_internal_dir = os.path.join(os.path.dirname(__file__),
-                                           "idapro_internal")
+        idapro_internal_dir = os.path.dirname(__file__)
         record_module_template = os.path.join(idapro_internal_dir,
+                                              "idapro_internal",
                                               "init.py.tmpl")
         ida_python_init = os.path.join(os.path.dirname(self.ida_path),
                                        "python", "init.py")
