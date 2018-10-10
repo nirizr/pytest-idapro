@@ -29,10 +29,9 @@ class MockDeferredPlugin(BasePlugin):
         self.app_window = None
         self.app_thread = None
 
-    @classmethod
-    def pytest_configure(cls):
+    def pytest_configure(self):
         for module_name in modules_list:
-            sys.modules[module_name] = cls.get_module(module_name)
+            sys.modules[module_name] = self.get_module(module_name)
 
     @staticmethod
     def get_module(module_name):
