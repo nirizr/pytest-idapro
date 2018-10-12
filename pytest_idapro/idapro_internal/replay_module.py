@@ -49,9 +49,9 @@ def instance_score(instance, name, args, kwargs, caller):
     s = 0
     s += 100 if str(name) != str(instance['name']) else 0
     s += sum(10 for a, b in zip(args, instance['args'])
-             if clean_arg(a) != b)
+             if a != clean_arg(b))
     s += sum(10 for a, b in zip(kwargs.items(), instance['kwargs'].items())
-             if a[0] != b[0] or clean_arg(a[1]) != b[1])
+             if a[0] != b[0] or a[1] != clean_arg(b[1]))
     s += abs(caller[2] - instance['caller_line'])
     s += 100 if str(caller[1]) != str(instance['caller_file']) else 0
     s += 100 if str(caller[3]) != str(instance['caller_function']) else 0

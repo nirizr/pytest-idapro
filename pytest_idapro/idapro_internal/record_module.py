@@ -103,48 +103,34 @@ oga = object.__getattribute__
 osa = object.__setattr__
 
 
-def clean_arg(arg):
-    """Cleanup argument's representation for comparison by removing the
-    terminating memory address"""
-
-    sarg = repr(arg)
-    if sarg[0] != '<':
-        return sarg
-
-    if len(sarg.split()) < 2:
-        return sarg
-
-    parts = sarg.split()
-    if parts[-2] == 'at' and parts[-1][-1] == '>' and parts[-1][:2] == '0x':
-        return " ".join(parts[:-2]) + '>'
-
-    return sarg
-
-
 class JSONEncoder(json.JSONEncoder):
     def default(self, o):
         if hasattr(o, '__subject__'):
-            o = o.__subject__
-        elif isinstance(o, type):
-            return clean_arg(o)
+            cls = o.__class__
+            if cls.__name__ == 'RecordClass':
+                return cls.__subject_name__ + ";" + repr(o)
+            else:
+                return cls.__name__ + ";" + repr(o)
+        if isinstance(o, type):
+            return repr(o)
         elif isinstance(o, types.InstanceType):
-            return clean_arg(o)
+            return repr(o)
         elif inspect.isbuiltin(o):
-            return clean_arg(o)
+            return repr(o)
         elif isinstance(o, types.ModuleType):
-            return clean_arg(o)
+            return repr(o)
         elif isinstance(o, types.InstanceType):
-            return clean_arg(o)
+            return repr(o)
         elif inspect.isclass(o):
-            return clean_arg(o)
+            return repr(o)
         elif inspect.isfunction(o):
-            return clean_arg(o)
+            return repr(o)
         try:
             return super(JSONEncoder, self).default(o)
         except TypeError:
             safe_print("WARN: Unsupported serialize", type(o), o,
                        type(o).__name__)
-            return clean_arg(o)
+            return repr(o)
 
 
 def init_record(record, subject, records, name):
