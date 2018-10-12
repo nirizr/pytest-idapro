@@ -61,13 +61,14 @@ def instance_score(instance, name, args, kwargs, caller):
     return s, instance
 
 
-def instance_select(replay_cls, name, args, kwargs):
+def instance_select(replay_cls, data_type, name, args, kwargs):
     caller = inspect.stack()[2]
-    instances = replay_cls.__records__['data']
-    args = list(args)
+    instances = replay_cls.__records__[data_type]
+    args = [clean_arg(a) for a in args]
+    kwargs = {k: clean_arg(v) for k, v in kwargs.items()}
 
     def instance_score_wrap(instance):
-        return instance_score(instance, name, args, kwargs, caller)
+        return instance_score(instance['instance_desc'], name, args, kwargs, caller)
 
     instances = sorted(map(instance_score_wrap, instances))
 
@@ -93,7 +94,7 @@ def replay_factory(name, records):
     record = records[name]
     value_type = record['value_type']
     if value_type == 'value' or value_type == 'override':
-        return record['data']
+        return record['raw_data']
     elif value_type == 'module':
         return init_replay(AbstractReplay(), name, record['data'])
     elif value_type == 'class':
@@ -103,7 +104,7 @@ def replay_factory(name, records):
                       cls.__records__)
                 o = super(ClassReplay, cls).__new__(cls)
 
-                instance = instance_select(cls, cls.__name__, args, kwargs)
+                instance = instance_select(cls, 'instance_data', cls.__name__, args, kwargs)
 
                 return init_replay(o, name, instance)
 
@@ -165,7 +166,7 @@ class AbstractReplay(object):
         if attr == '__object_name__' or attr == '__records__':
             osa(self, attr, val)
         else:
-            self.__records__[attr] = {'data': val, 'value_type': 'override'}
+            self.__records__[attr] = {'raw_data': val, 'value_type': 'override'}
 
 
 class ModuleReplay(AbstractReplay):
@@ -174,14 +175,14 @@ class ModuleReplay(AbstractReplay):
 
 class FunctionReplay(AbstractReplay):
     def __call__(self, *args, **kwargs):
-        instance = instance_select(self, self.__name__, args, kwargs)
+        instance = instance_select(self, 'call_data', self.__name__, args, kwargs)
 
         if 'callback' in instance and instance['callback']:
             for arg in args + tuple(kwargs.values()):
                 if not inspect.isfunction(arg):
                     continue
                 # TODO: improve logic over just picking the first available
-                arg_data = instance['callback'][arg.__name__]['data'][0]
+                arg_data = instance['callback'][arg.__name__]['call_data'][0]['instance_desc']
                 if not arg_data:
                     continue
                 print("calling {} with {}".format(arg, arg_data))

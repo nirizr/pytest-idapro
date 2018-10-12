@@ -133,7 +133,7 @@ class JSONEncoder(json.JSONEncoder):
             return repr(o)
 
 
-def init_record(record, subject, records, name):
+def init_record(record, subject, records, name, data_type=None):
     if hasattr(record, '__subject__') and record.__subject__ != subject:
         raise Exception("Trying to override subject", record.__subject__,
                         subject, name, record)
@@ -143,7 +143,7 @@ def init_record(record, subject, records, name):
 
     if name is None:
         record.__records__ = {'value_type': record.__value_type__}
-        records.setdefault('data', []).append(record.__records__)
+        records.setdefault(data_type, []).append(record.__records__)
     elif name in records:
         record.__records__ = records[name]
         if record.__records__['value_type'] != record.__value_type__:
@@ -190,17 +190,20 @@ def record_factory(name, value, parent_record):
                 obj = super(RecordClass, cls).__new__(cls, *args, **kwargs)
 
                 r = init_record(InstanceRecord(), obj, parent_record[name],
-                                None)
-                r.__records__['args'] = args
-                r.__records__['kwargs'] = kwargs
+                                None, 'instance_data')
+                init_desc = {}
+                init_desc['args'] = args
+                init_desc['kwargs'] = kwargs
                 if cls.__name__ == 'RecordClass':
-                    r.__records__['name'] = cls.__subject_name__
+                    init_desc['name'] = cls.__subject_name__
                 else:
-                    r.__records__['name'] = cls.__name__
+                    init_desc['name'] = cls.__name__
                 caller = inspect.stack()[1]
-                r.__records__['caller_file'] = caller[1]
-                r.__records__['caller_line'] = caller[2]
-                r.__records__['caller_function'] = caller[3]
+                init_desc['caller_file'] = caller[1]
+                init_desc['caller_line'] = caller[2]
+                init_desc['caller_function'] = caller[3]
+                r.__records__['instance_desc'] = init_desc
+
 
                 obj.__instance_records__ = r
 
@@ -239,7 +242,7 @@ def record_factory(name, value, parent_record):
         return init_record(OldInstanceRecord(), value, parent_record, name)
     elif isinstance(value, base_types):
         if name != '__dict__':
-            parent_record[name] = {'value_type': 'value', 'data': value}
+            parent_record[name] = {'value_type': 'value', 'raw_data': value}
         return value
 
     safe_print("WARN: record_factory failed", value, name, type(value))
@@ -263,7 +266,7 @@ class AbstractRecord(object):
             calldesc['caller_line'] = caller[2]
             calldesc['caller_function'] = caller[3]
 
-        self.__records__.setdefault('data', []).append(calldesc)
+        self.__records__.setdefault('call_data', []).append({'instance_desc': calldesc})
 
         args = call_prepare_records(args, calldesc)
         kwargs = call_prepare_records(kwargs, calldesc)
