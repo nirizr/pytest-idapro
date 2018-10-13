@@ -25,6 +25,15 @@ def pytest_addoption(parser):
     group._addoption('--ida-keep', action="store_true", default=False,
                      help="Keep IDA instance running instead of terminating "
                           "it. Only acceptable with --ida.")
+    # TODO: Actually implement any use of this flag (vaildation on matched
+    # instances)
+    group._addoption('--ida-strict', action="store_true", default=False,
+                     help="Enforce strict validation while replaying and "
+                          "recording. While recording exceptions will be "
+                          "raised when unknown object types are encountered "
+                          "instead of following default behavior. While "
+                          "replaying a single exact match object will be "
+                          "required instead of a best-match approach.")
 
 
 @pytest.hookimpl(tryfirst=True)
