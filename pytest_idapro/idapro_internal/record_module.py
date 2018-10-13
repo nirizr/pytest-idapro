@@ -63,8 +63,12 @@ g_records = {}
 base_types = (int, str, dict, list, tuple, set)
 try:
     base_types += (unicode, long, types.NoneType)
+    str_types = (str, unicode)
+    int_types = (int, long)
 except NameError:
     base_types += (type(None),)
+    str_types = (str,)
+    int_types = (int,)
 
 
 def call_prepare_records(o, pr):
@@ -104,18 +108,17 @@ osa = object.__setattr__
 
 
 def clean_arg(arg):
-    if hasattr(arg, '__instance_records__') and arg.__instance_records__ and arg.__instance_records__.__records__:
+    if (hasattr(arg, '__instance_records__') and
+        arg.__instance_records__ and
+        arg.__instance_records__.__records__):
         r = arg.__instance_records__.__records__['instance_desc']
-        safe_print(r)
-        # TODO: looks like the only difference is that self.default will append a string with quotes while
-        # replay's clean_arg won't. we should get this to behave more like clean_arg
         args = map(clean_arg, r.get('args', []))
         kwargs = {k: clean_arg(v) for k, v in r.get('kwargs', {}).items()}
         return str(r.get('name', '')) + ";" + str(args) + ";" + str(kwargs)
 
-    if isinstance(arg, (int, long, str)) or arg is None:
+    if isinstance(arg, int_types) or arg is None:
         return arg
-    if isinstance(arg, unicode):
+    if isinstance(arg, str_types):
         return str(arg)
 
     return repr(arg)
@@ -123,14 +126,12 @@ def clean_arg(arg):
 
 class JSONEncoder(json.JSONEncoder):
     def default(self, o):
-        #if hasattr(o, '__subject__') or type(o).__name__ == 'RecordClass':
-        #    record_obj_desc = [o.__subject__]
-        #    if 'args' in o.__records__:
-        #        record_obj_desc.append(o.__records__['args'])
-        #    if 'kwargs' in o.__records__:
-        #        record_obj_desc.append(o.__records__['kwargs'])
-        #    return self.default(record_obj_desc)
-        if hasattr(o, '__instance_records__') and o.__instance_records__ and o.__instance_records__.__records__:
+        # TODO: this can probably be simplified and merged with clean_arg
+        # to attempt base class, then __instance_records__ and then default
+        # to repr
+        if (hasattr(o, '__instance_records__') and
+            o.__instance_records__ and
+            o.__instance_records__.__records__):
             return clean_arg(o)
         if hasattr(o, '__subject__'):
             cls = o.__class__
@@ -231,7 +232,6 @@ def record_factory(name, value, parent_record):
                 init_desc['caller_function'] = caller[3]
                 r.__records__['instance_desc'] = init_desc
 
-
                 obj.__instance_records__ = r
 
                 # __init__ method is not called by python if __new__
@@ -293,7 +293,9 @@ class AbstractRecord(object):
             calldesc['caller_line'] = caller[2]
             calldesc['caller_function'] = caller[3]
 
-        self.__records__.setdefault('call_data', []).append({'instance_desc': calldesc})
+        if 'call_data' not in self.__records__:
+            self.__records__['call_data'] = []
+        self.__records__['call_data'].append({'instance_desc': calldesc})
 
         args = call_prepare_records(args, calldesc)
         kwargs = call_prepare_records(kwargs, calldesc)

@@ -22,19 +22,33 @@ oga = object.__getattribute__
 osa = object.__setattr__
 
 
+try:
+    str_types = (str, unicode)
+    int_types = (int, long)
+except NameError:
+    str_types = (str,)
+    int_types = (int,)
+
+
 def clean_arg(arg):
     """Cleanup argument's representation for comparison by removing the
     terminating memory address"""
     if isinstance(arg, AbstractReplay):
-        args = map(clean_arg, arg.__records__['args'])
-        kwargs = {k: clean_arg(v) for k, v in arg.__records__['kwargs']}
-        return arg.__records__['name'] + ";" + str(args) + ";" + str(kwargs)
-    if isinstance(arg, (int, long, str)) or arg is  None:
-        return arg
-    if isinstance(arg, unicode):
-        return str(arg)
+        r = arg.__records__
+        args = map(clean_arg, r.get('args', []))
+        kwargs = {k: clean_arg(v) for k, v in r.get('kwargs', {})}
+        name = r.get('name', {}).get('raw_value', '')
+        print("NAME", name)
+        return name + ";" + str(args) + ";" + str(kwargs)
 
-    arg = repr(arg)
+    if isinstance(arg, int_types) or arg is None:
+        return arg
+
+    if isinstance(arg, str_types):
+        arg = str(arg)
+    else:
+        arg = repr(arg)
+
     parts = arg.split()
 
     if (len(parts) > 2 and arg[0] == '<' and arg[-1] == '>' and
@@ -46,19 +60,21 @@ def clean_arg(arg):
 
 def instance_score(instance, name, args, kwargs, caller):
     print("Local", args, kwargs, name, caller[1:])
-    print("Verses", instance['args'], instance['kwargs'], instance['name'],
-          instance['caller_file'], instance['caller_line'],
-          instance['caller_function'])
+    instance_desc = instance['instance_desc']
+    print("Verses", instance_desc['args'], instance_desc['kwargs'],
+          instance_desc['name'], instance_desc['caller_file'],
+          instance_desc['caller_line'], instance_desc['caller_function'])
 
     s = 0
-    s += 100 if str(name) != str(instance['name']) else 0
-    s += sum(10 for a, b in zip(args, instance['args'])
+    s += 100 if str(name) != str(instance_desc['name']) else 0
+    s += sum(10 for a, b in zip(args, instance_desc['args'])
              if a != clean_arg(b))
-    s += sum(10 for a, b in zip(kwargs.items(), instance['kwargs'].items())
+    s += sum(10 for a, b in zip(kwargs.items(),
+                                instance_desc['kwargs'].items())
              if a[0] != b[0] or a[1] != clean_arg(b[1]))
-    s += abs(caller[2] - instance['caller_line'])
-    s += 100 if str(caller[1]) != str(instance['caller_file']) else 0
-    s += 100 if str(caller[3]) != str(instance['caller_function']) else 0
+    s += abs(caller[2] - instance_desc['caller_line'])
+    s += 100 if str(caller[1]) != str(instance_desc['caller_file']) else 0
+    s += 100 if str(caller[3]) != str(instance_desc['caller_function']) else 0
 
     print("Scored", s)
 
@@ -72,7 +88,7 @@ def instance_select(replay_cls, data_type, name, args, kwargs):
     kwargs = {k: clean_arg(v) for k, v in kwargs.items()}
 
     def instance_score_wrap(instance):
-        return instance_score(instance['instance_desc'], name, args, kwargs, caller)
+        return instance_score(instance, name, args, kwargs, caller)
 
     instances = sorted(map(instance_score_wrap, instances))
 
@@ -109,7 +125,8 @@ def replay_factory(name, records):
                       cls.__records__)
                 o = super(ClassReplay, cls).__new__(cls)
 
-                instance = instance_select(cls, 'instance_data', cls.__name__, args, kwargs)
+                instance = instance_select(cls, 'instance_data', cls.__name__,
+                                           args, kwargs)
 
                 return init_replay(o, name, instance)
 
@@ -171,7 +188,8 @@ class AbstractReplay(object):
         if attr == '__object_name__' or attr == '__records__':
             osa(self, attr, val)
         else:
-            self.__records__[attr] = {'raw_data': val, 'value_type': 'override'}
+            self.__records__[attr] = {'raw_data': val,
+                                      'value_type': 'override'}
 
 
 class ModuleReplay(AbstractReplay):
@@ -180,20 +198,23 @@ class ModuleReplay(AbstractReplay):
 
 class FunctionReplay(AbstractReplay):
     def __call__(self, *args, **kwargs):
-        instance = instance_select(self, 'call_data', self.__name__, args, kwargs)
+        instance = instance_select(self, 'call_data', self.__name__, args,
+                                   kwargs)
+        instance_desc = instance['instance_desc']
 
-        if 'callback' in instance and instance['callback']:
+        if 'callback' in instance_desc and instance_desc['callback']:
             for arg in args + tuple(kwargs.values()):
+                print("callback", arg)
                 if not inspect.isfunction(arg):
                     continue
+                callbacks = instance_desc['callback'][arg.__name__]
                 # TODO: improve logic over just picking the first available
-                arg_data = instance['callback'][arg.__name__]['call_data'][0]['instance_desc']
-                if not arg_data:
-                    continue
-                print("calling {} with {}".format(arg, arg_data))
-                arg(*arg_data['args'], **arg_data['kwargs'])
+                callback_data = callbacks['call_data'][0]
+                callback_args = callback_data['instance_desc']
+                print("calling {} with {}".format(arg, callback_args))
+                arg(*callback_args['args'], **callback_args['kwargs'])
                 # TODO: validate return value is correct
 
-        if 'exception' in instance:
-            raise replay_factory('exception', instance)
-        return replay_factory('retval', instance)
+        if 'exception' in instance_desc:
+            raise replay_factory('exception', instance_desc)
+        return replay_factory('retval', instance_desc)
