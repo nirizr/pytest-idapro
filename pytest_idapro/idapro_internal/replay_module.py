@@ -25,23 +25,27 @@ osa = object.__setattr__
 def clean_arg(arg):
     """Cleanup argument's representation for comparison by removing the
     terminating memory address"""
-
-    sarg = repr(arg)
-    if sarg[0] != '<':
+    if isinstance(arg, AbstractReplay):
+        args = map(clean_arg, arg.__records__['args'])
+        kwargs = {k: clean_arg(v) for k, v in arg.__records__['kwargs']}
+        return arg.__records__['name'] + ";" + str(args) + ";" + str(kwargs)
+    if isinstance(arg, (int, long, str)) or arg is  None:
         return arg
+    if isinstance(arg, unicode):
+        return str(arg)
 
-    if len(sarg.split()) < 2:
-        return arg
+    arg = repr(arg)
+    parts = arg.split()
 
-    parts = sarg.split()
-    if parts[-2] == 'at' and parts[-1][-1] == '>' and parts[-1][:2] == '0x':
-        return " ".join(parts[:-2]) + '>'
+    if (len(parts) > 2 and arg[0] == '<' and arg[-1] == '>' and
+        parts[-2] == 'at' and parts[-1][:2] == '0x'):
+        arg = " ".join(parts[:-2]) + '>'
 
     return arg
 
 
 def instance_score(instance, name, args, kwargs, caller):
-    print("Calculating", args, kwargs, name, caller[1:])
+    print("Local", args, kwargs, name, caller[1:])
     print("Verses", instance['args'], instance['kwargs'], instance['name'],
           instance['caller_file'], instance['caller_line'],
           instance['caller_function'])
@@ -80,9 +84,10 @@ def instance_select(replay_cls, data_type, name, args, kwargs):
     # if instances[0][0] != 0:
     #     raise Exception("Non zero score", args, kwargs, name, caller,
     #                    instances[0])
-    # if sum(1 for i in instances if i[0] == 0) > 1:
+    # zero_instances = [i[1] for i in instances if i[0] == 0]
+    # if len(set(map(str, zero_instances)))  > 1:
     #     raise Exception("More than one zero scores", args, kwargs, name,
-    #                     caller, instances)
+    #                     caller, zero_instances)
 
     print("matched", instances[0])
     print("with", args, kwargs, name, caller)

@@ -103,15 +103,42 @@ oga = object.__getattribute__
 osa = object.__setattr__
 
 
+def clean_arg(arg):
+    if hasattr(arg, '__instance_records__') and arg.__instance_records__ and arg.__instance_records__.__records__:
+        r = arg.__instance_records__.__records__['instance_desc']
+        safe_print(r)
+        # TODO: looks like the only difference is that self.default will append a string with quotes while
+        # replay's clean_arg won't. we should get this to behave more like clean_arg
+        args = map(clean_arg, r.get('args', []))
+        kwargs = {k: clean_arg(v) for k, v in r.get('kwargs', {}).items()}
+        return str(r.get('name', '')) + ";" + str(args) + ";" + str(kwargs)
+
+    if isinstance(arg, (int, long, str)) or arg is None:
+        return arg
+    if isinstance(arg, unicode):
+        return str(arg)
+
+    return repr(arg)
+
+
 class JSONEncoder(json.JSONEncoder):
     def default(self, o):
+        #if hasattr(o, '__subject__') or type(o).__name__ == 'RecordClass':
+        #    record_obj_desc = [o.__subject__]
+        #    if 'args' in o.__records__:
+        #        record_obj_desc.append(o.__records__['args'])
+        #    if 'kwargs' in o.__records__:
+        #        record_obj_desc.append(o.__records__['kwargs'])
+        #    return self.default(record_obj_desc)
+        if hasattr(o, '__instance_records__') and o.__instance_records__ and o.__instance_records__.__records__:
+            return clean_arg(o)
         if hasattr(o, '__subject__'):
             cls = o.__class__
             if cls.__name__ == 'RecordClass':
                 return cls.__subject_name__ + ";" + repr(o)
             else:
                 return cls.__name__ + ";" + repr(o)
-        if isinstance(o, type):
+        elif isinstance(o, type):
             return repr(o)
         elif isinstance(o, types.InstanceType):
             return repr(o)
