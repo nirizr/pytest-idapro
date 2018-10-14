@@ -12,7 +12,8 @@ Motivation
 
 As the avarage IDAPython plugin size increases, the need of proper unitests
 becomes more evident. The purpose of this pytest plugin is to ease unittesting
-IDAPython plugins and scripts.
+IDAPython plugins and scripts and mitigate the gap between Continuous Integration
+services and the IDA executable (which we are incapable of executing in CI).
 
 Basic usage
 -----------
