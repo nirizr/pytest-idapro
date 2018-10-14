@@ -58,7 +58,7 @@ def clean_arg(arg):
     return arg
 
 
-def instance_score(instance, name, args, kwargs, caller):
+def instance_score(instance, name, args, kwargs, caller, call_count):
     print("Local", args, kwargs, name, caller[1:])
     instance_desc = instance['instance_desc']
     print("Verses", instance_desc['args'], instance_desc['kwargs'],
@@ -73,6 +73,7 @@ def instance_score(instance, name, args, kwargs, caller):
                                 instance_desc['kwargs'].items())
              if a[0] != b[0] or a[1] != clean_arg(b[1]))
     s += abs(caller[2] - instance_desc['caller_line'])
+    s += 5 * abs(call_count  - instance_desc['call_index'])
     s += 100 if str(caller[1]) != str(instance_desc['caller_file']) else 0
     s += 100 if str(caller[3]) != str(instance_desc['caller_function']) else 0
 
@@ -84,11 +85,16 @@ def instance_score(instance, name, args, kwargs, caller):
 def instance_select(replay_cls, data_type, name, args, kwargs):
     caller = inspect.stack()[2]
     instances = replay_cls.__records__[data_type]
+    if 'call_count' in replay_cls.__records__:
+        replay_cls.__records__['call_count'] += 1
+    else:
+        replay_cls.__records__['call_count'] = 0
+    call_count = replay_cls.__records__['call_count']
     args = [clean_arg(a) for a in args]
     kwargs = {k: clean_arg(v) for k, v in kwargs.items()}
 
     def instance_score_wrap(instance):
-        return instance_score(instance, name, args, kwargs, caller)
+        return instance_score(instance, name, args, kwargs, caller, call_count)
 
     instances = sorted(map(instance_score_wrap, instances))
 

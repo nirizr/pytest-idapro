@@ -232,6 +232,12 @@ def record_factory(name, value, parent_record):
                 init_desc['caller_function'] = caller[3]
                 r.__records__['instance_desc'] = init_desc
 
+                if not 'call_count' in parent_record[name]:
+                    parent_record[name]['call_count'] = 0
+                else:
+                    parent_record[name]['call_count'] += 1
+                init_desc['call_index'] = parent_record[name]['call_count']
+
                 obj.__instance_records__ = r
 
                 # __init__ method is not called by python if __new__
@@ -295,6 +301,11 @@ class AbstractRecord(object):
 
         if 'call_data' not in self.__records__:
             self.__records__['call_data'] = []
+            self.__records__['call_count'] = 0
+        else:
+            self.__records__['call_count'] += 1
+        calldesc['call_index'] = self.__records__['call_count']
+        # TODO: can this be united with instance's call to init_record?
         self.__records__['call_data'].append({'instance_desc': calldesc})
 
         args = call_prepare_records(args, calldesc)
