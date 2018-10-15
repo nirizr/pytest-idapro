@@ -23,3 +23,6 @@ class ReplayDeferredPlugin(MockDeferredPlugin):
         module_name = module_aliases.get(module_name, module_name)
         module_record = self.records[module_name]
         return replay_module.module_replay(module_name, module_record)
+
+    def pytest_collection_finish(self, session):
+        session.items.sort(key=lambda i: i.nodeid)

@@ -85,11 +85,11 @@ def instance_score(instance, name, args, kwargs, caller, call_count):
 def instance_select(replay_cls, data_type, name, args, kwargs):
     caller = inspect.stack()[2]
     instances = replay_cls.__records__[data_type]
-    if 'call_count' in replay_cls.__records__:
-        replay_cls.__records__['call_count'] += 1
+    if 'replay_call_count' in replay_cls.__records__:
+        replay_cls.__records__['replay_call_count'] += 1
     else:
-        replay_cls.__records__['call_count'] = 0
-    call_count = replay_cls.__records__['call_count']
+        replay_cls.__records__['replay_call_count'] = 0
+    call_count = replay_cls.__records__['replay_call_count']
     args = [clean_arg(a) for a in args]
     kwargs = {k: clean_arg(v) for k, v in kwargs.items()}
 
