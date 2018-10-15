@@ -99,19 +99,20 @@ def instance_select(replay_cls, data_type, name, args, kwargs):
 
     if len(instances) == 0:
         raise Exception("Failed matching", args, kwargs)
+
+    print("name", name, instances[0][1]['instance_desc']['name'])
+    print("args", args, instances[0][1]['instance_desc']['args'])
+    print("kwargs", kwargs, instances[0][1]['instance_desc']['kwargs'])
+    print("index", call_index, instances[0][1]['instance_desc']['call_index'])
+
     # TODO: ideally this should be included but it fails for some tests when
     # I'm guessting multiple instances are identical. Should validate and see
     # if we can remove duplicates somewhere, preferably in the recording code
-    # if instances[0][0] != 0:
-    #     raise Exception("Non zero score", args, kwargs, name, caller,
-    #                    instances[0])
-    # zero_instances = [i[1] for i in instances if i[0] == 0]
-    # if len(set(map(str, zero_instances)))  > 1:
-    #     raise Exception("More than one zero scores", args, kwargs, name,
-    #                     caller, zero_instances)
-
-    print("matched", instances[0])
-    print("with", args, kwargs, name, caller)
+    if instances[0][0] != 0:
+        raise Exception("Non zero score")
+    zero_instances = [i[1] for i in instances if i[0] == instances[0][0]]
+    if len(set(map(str, zero_instances))) > 1:
+        raise Exception("More than one best score", zero_instances)
 
     return instances[0][1]
 
