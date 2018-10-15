@@ -57,7 +57,7 @@ def clean_arg(arg):
     return arg
 
 
-def instance_score(instance, name, args, kwargs, caller, call_count):
+def instance_score(instance, name, args, kwargs, caller, call_index):
     print("Local", args, kwargs, name, caller[1:])
     instance_desc = instance['instance_desc']
     print("Verses", instance_desc['args'], instance_desc['kwargs'],
@@ -72,7 +72,7 @@ def instance_score(instance, name, args, kwargs, caller, call_count):
                                 instance_desc['kwargs'].items())
              if a[0] != b[0] or a[1] != clean_arg(b[1]))
     s += abs(caller[2] - instance_desc['caller_line'])
-    s += 5 * abs(call_count  - instance_desc['call_index'])
+    s += 5 * abs(call_index  - instance_desc['call_index'])
     s += 100 if str(caller[1]) != str(instance_desc['caller_file']) else 0
     s += 100 if str(caller[3]) != str(instance_desc['caller_function']) else 0
 
@@ -88,12 +88,12 @@ def instance_select(replay_cls, data_type, name, args, kwargs):
         replay_cls.__records__['replay_call_count'] += 1
     else:
         replay_cls.__records__['replay_call_count'] = 0
-    call_count = replay_cls.__records__['replay_call_count']
+    call_index = replay_cls.__records__['replay_call_count']
     args = [clean_arg(a) for a in args]
     kwargs = {k: clean_arg(v) for k, v in kwargs.items()}
 
     def instance_score_wrap(instance):
-        return instance_score(instance, name, args, kwargs, caller, call_count)
+        return instance_score(instance, name, args, kwargs, caller, call_index)
 
     instances = sorted(map(instance_score_wrap, instances))
 
@@ -126,8 +126,6 @@ def replay_factory(name, records):
     elif value_type == 'class':
         class ClassReplay(AbstractReplay):
             def __new__(cls, *args, **kwargs):
-                print("classreplay.__new__", cls, args, kwargs,
-                      cls.__records__)
                 o = super(ClassReplay, cls).__new__(cls)
 
                 instance = instance_select(cls, 'instance_data', cls.__name__,
@@ -209,7 +207,6 @@ class FunctionReplay(AbstractReplay):
 
         if 'callback' in instance_desc and instance_desc['callback']:
             for arg in args + tuple(kwargs.values()):
-                print("callback", arg)
                 if not inspect.isfunction(arg):
                     continue
                 callbacks = instance_desc['callback'][arg.__name__]
