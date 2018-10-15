@@ -34,11 +34,10 @@ def clean_arg(arg):
     """Cleanup argument's representation for comparison by removing the
     terminating memory address"""
     if isinstance(arg, AbstractReplay):
-        r = arg.__records__
-        args = map(clean_arg, r.get('args', []))
-        kwargs = {k: clean_arg(v) for k, v in r.get('kwargs', {})}
-        name = r.get('name', {}).get('raw_value', '')
-        print("NAME", name)
+        r = arg.__records__['instance_desc']
+        args = map(clean_arg, r['args'])
+        kwargs = {k: clean_arg(v) for k, v in r['kwargs']}
+        name = r['name']
         return name + ";" + str(args) + ";" + str(kwargs)
 
     if isinstance(arg, int_types) or arg is None:
