@@ -232,7 +232,7 @@ def record_factory(name, value, parent_record):
                 init_desc['caller_function'] = caller[3]
                 r.__records__['instance_desc'] = init_desc
 
-                if not 'call_count' in parent_record[name]:
+                if 'call_count' not in parent_record[name]:
                     parent_record[name]['call_count'] = 0
                 else:
                     parent_record[name]['call_count'] += 1
