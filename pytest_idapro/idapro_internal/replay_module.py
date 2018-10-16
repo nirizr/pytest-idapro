@@ -1,3 +1,4 @@
+import os
 import inspect
 try:
     import exceptions
@@ -57,12 +58,21 @@ def clean_arg(arg):
     return arg
 
 
-def instance_score(instance, name, args, kwargs, caller, call_index):
-    print("Local", args, kwargs, name, caller[1:])
+def score_callstack(local_callstack, instance_callstack):
+    s = 0
+    for a, b in zip(local_callstack, instance_callstack):
+        s += abs(a[2] - b['caller_line'])
+        s += 100 if str(a[1]) != str(b['caller_file']) else 0
+        s += 100 if str(a[3]) != str(b['caller_function']) else 0
+    return s
+
+
+def instance_score(instance, name, args, kwargs, callstack, call_index):
+    print("Local", args, kwargs, name, call_index, callstack[0][1:])
     instance_desc = instance['instance_desc']
     print("Verses", instance_desc['args'], instance_desc['kwargs'],
-          instance_desc['name'], instance_desc['caller_file'],
-          instance_desc['caller_line'], instance_desc['caller_function'])
+          instance_desc['name'], instance_desc['call_index'],
+          instance_desc['callstack'])
 
     s = 0
     s += 100 if str(name) != str(instance_desc['name']) else 0
@@ -71,18 +81,34 @@ def instance_score(instance, name, args, kwargs, caller, call_index):
     s += sum(10 for a, b in zip(kwargs.items(),
                                 instance_desc['kwargs'].items())
              if a[0] != b[0] or a[1] != clean_arg(b[1]))
-    s += abs(caller[2] - instance_desc['caller_line'])
     s += 5 * abs(call_index - instance_desc['call_index'])
-    s += 100 if str(caller[1]) != str(instance_desc['caller_file']) else 0
-    s += 100 if str(caller[3]) != str(instance_desc['caller_function']) else 0
+
+    s += score_callstack(callstack, instance_desc['callstack'])
 
     print("Scored", s)
 
     return s, instance
 
 
+def clean_callstack(callstack):
+    filtered_callstack = []
+    for cs in callstack:
+        if cs[3].startswith('pytest_'):
+            break
+        if '/_pytest/' in cs[1]:
+            continue
+        if '/pytestqt/' in cs[1]:
+            continue
+        if '/pytest_idapro/' in cs[1]:
+            continue
+
+        filtered_callstack.append(cs)
+    return filtered_callstack
+
+
 def instance_select(replay_cls, data_type, name, args, kwargs):
-    caller = inspect.stack()[2]
+    local_callstack = clean_callstack(inspect.stack()[2:])
+
     instances = replay_cls.__records__[data_type]
     if 'replay_call_count' in replay_cls.__records__:
         replay_cls.__records__['replay_call_count'] += 1
@@ -93,17 +119,22 @@ def instance_select(replay_cls, data_type, name, args, kwargs):
     kwargs = {k: clean_arg(v) for k, v in kwargs.items()}
 
     def instance_score_wrap(instance):
-        return instance_score(instance, name, args, kwargs, caller, call_index)
+        return instance_score(instance, name, args, kwargs, local_callstack,
+                              call_index)
 
     instances = sorted(map(instance_score_wrap, instances))
 
     if len(instances) == 0:
         raise Exception("Failed matching", args, kwargs)
 
-    print("name", name, instances[0][1]['instance_desc']['name'])
-    print("args", args, instances[0][1]['instance_desc']['args'])
-    print("kwargs", kwargs, instances[0][1]['instance_desc']['kwargs'])
-    print("index", call_index, instances[0][1]['instance_desc']['call_index'])
+    select_desc = instances[0][1]['instance_desc']
+    print("name", name, select_desc['name'])
+    print("args", args, select_desc['args'])
+    print("kwargs", kwargs, select_desc['kwargs'])
+    print("index", call_index, select_desc['call_index'])
+    for a, b in zip(local_callstack, select_desc['callstack']):
+        print("callstack", a[1], b['caller_file'], a[3], b['caller_function'],
+              a[2], b['caller_line'])
 
     # TODO: ideally this should be included but it fails for some tests when
     # I'm guessting multiple instances are identical. Should validate and see
@@ -163,10 +194,6 @@ class AbstractReplay(object):
             return object_name
         elif attr == '__records__':
             return records
-
-        print("getattr called for {} in {} with {}".format(attr, object_name,
-                                                           records.get(attr,
-                                                                       None)))
 
         # TODO: this should probably done better, really record those (and
         # other) values.

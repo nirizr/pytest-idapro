@@ -161,6 +161,30 @@ class JSONEncoder(json.JSONEncoder):
             return repr(o)
 
 
+def record_callstack(callstacks):
+    assert callstacks == inspect.stack()[2:]
+    callstack_records = []
+    for callstack in callstacks:
+        callstack_record = {'caller_file': callstack[1],
+                            'caller_line': callstack[2],
+                            'caller_function': callstack[3]}
+        if callstack[4]:
+            callstack_record['caller_text'] = callstack[4][0].strip()
+        if callstack_record['caller_function'].startswith('pytest_'):
+            break
+        if is_idamodule(os.path.basename(callstack_record['caller_file'])):
+            continue
+        if '/_pytest/' in callstack_record['caller_file']:
+            continue
+        if '/pytestqt/' in callstack_record['caller_file']:
+            continue
+        if '/pytest_idapro/' in callstack_record['caller_file']:
+            continue
+
+        callstack_records.append(callstack_record)
+    return callstack_records
+
+
 def init_record(record, subject, records, name, data_type=None):
     if hasattr(record, '__subject__') and record.__subject__ != subject:
         raise Exception("Trying to override subject", record.__subject__,
@@ -226,10 +250,8 @@ def record_factory(name, value, parent_record):
                     init_desc['name'] = cls.__subject_name__
                 else:
                     init_desc['name'] = cls.__name__
-                caller = inspect.stack()[1]
-                init_desc['caller_file'] = caller[1]
-                init_desc['caller_line'] = caller[2]
-                init_desc['caller_function'] = caller[3]
+                caller = inspect.stack()[1:]
+                init_desc['callstack'] = record_callstack(caller)
                 r.__records__['instance_desc'] = init_desc
 
                 if 'call_count' not in parent_record[name]:
@@ -287,35 +309,33 @@ class AbstractRecord(object):
     __value_type__ = "unknown"
 
     def __call__(self, *args, **kwargs):
-        calldesc = {'args': args,
-                    'kwargs': kwargs,
-                    'name': self.__subject_name__,
-                    'callback': {}}
+        call_desc = {'args': args,
+                     'kwargs': kwargs,
+                     'name': self.__subject_name__,
+                     'callback': {}}
 
         # You'd imagine this is always true, right? well.. not in IDA ;)
         if len(inspect.stack()) > 1:
-            caller = inspect.stack()[1]
-            calldesc['caller_file'] = caller[1]
-            calldesc['caller_line'] = caller[2]
-            calldesc['caller_function'] = caller[3]
+            caller = inspect.stack()[1:]
+            call_desc['callstack'] = record_callstack(caller)
 
         if 'call_data' not in self.__records__:
             self.__records__['call_data'] = []
             self.__records__['call_count'] = 0
         else:
             self.__records__['call_count'] += 1
-        calldesc['call_index'] = self.__records__['call_count']
+        call_desc['call_index'] = self.__records__['call_count']
         # TODO: can this be united with instance's call to init_record?
-        self.__records__['call_data'].append({'instance_desc': calldesc})
+        self.__records__['call_data'].append({'instance_desc': call_desc})
 
-        args = call_prepare_records(args, calldesc)
-        kwargs = call_prepare_records(kwargs, calldesc)
+        args = call_prepare_records(args, call_desc)
+        kwargs = call_prepare_records(kwargs, call_desc)
         try:
             original_retval = self.__subject__(*args, **kwargs)
         except Exception as ex:
-            record_factory('exception', ex, calldesc)
+            record_factory('exception', ex, call_desc)
             raise
-        retval = record_factory('retval', original_retval, calldesc)
+        retval = record_factory('retval', original_retval, call_desc)
         return retval
 
     def __getattribute__(self, attr):
