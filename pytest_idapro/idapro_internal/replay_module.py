@@ -193,16 +193,6 @@ class AbstractReplay(object):
         elif attr == '__records__':
             return records
 
-        # TODO: this should probably done better, really record those (and
-        # other) values.
-        if attr == "__bases__":
-            return tuple()
-            # return oga(self, '__class__').__bases__
-        if attr == '__subclasses__':
-            def get_subclasses():
-                return oga(self, '__class__').__subclasses__
-            return get_subclasses
-
         try:
             return oga(self, attr)
         except AttributeError:
@@ -212,13 +202,6 @@ class AbstractReplay(object):
             raise ValueError("Missing attribute", attr, object_name, records)
 
         return replay_factory(attr, records)
-
-    def __setattr__(self, attr, val):
-        if attr == '__object_name__' or attr == '__records__':
-            object.__setattr__(self, attr, val)
-        else:
-            self.__records__[attr] = {'raw_data': val,
-                                      'value_type': 'override'}
 
 
 class ModuleReplay(AbstractReplay):
