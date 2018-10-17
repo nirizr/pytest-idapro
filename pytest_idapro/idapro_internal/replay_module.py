@@ -1,6 +1,7 @@
 import os
 import inspect
 import logging
+import re
 
 try:
     import exceptions
@@ -54,13 +55,7 @@ def clean_arg(arg):
     else:
         arg = repr(arg)
 
-    parts = arg.split()
-
-    if (len(parts) > 2 and arg[0] == '<' and arg[-1] == '>' and
-        parts[-2] == 'at' and parts[-1][:2] == '0x'):
-        arg = " ".join(parts[:-2]) + '>'
-
-    return arg
+    return re.sub(' at 0x[0-9a-fA-F]{1,16}>', '>', arg)
 
 
 def score_callstack(local_callstack, instance_callstack):
