@@ -167,19 +167,13 @@ def replay_factory(name, records):
     elif value_type == 'function':
         return init_replay(FunctionReplay(), name, record)
     elif value_type == 'exception':
-        # TODO: make sure there's a msg in here
-        cls = replay_factory('exception_class', record)
+        cls_name = record['exception_class']
+        if (hasattr(exceptions, cls_name) and
+            issubclass(getattr(exceptions, cls_name), BaseException)):
+            cls = getattr(exceptions, cls_name)
+        else:
+            cls = Exception
         return cls(*record['args'], **record['kwargs'])
-    elif value_type == 'exception_class':
-        if not hasattr(exceptions, record['class_name']):
-            return Exception
-        ex_cls = getattr(exceptions, record['class_name'])
-        # Make sure retireved class is actually an exception class, to
-        # prevent potential code-execution using an arbitrary builtin class
-        # load
-        if not issubclass(ex_cls, BaseException):
-            return Exception
-        return ex_cls
     else:
         raise ValueError("Unhandled value type", name, record)
 

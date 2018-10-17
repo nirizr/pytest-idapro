@@ -205,23 +205,16 @@ oga = object.__getattribute__
 
 def record_factory(name, value, parent_record):
     if (isinstance(value, AbstractRecord) or inspect.isbuiltin(value) or
+        (inspect.isclass(value) and issubclass(value, BaseException)) or
         type(value).__name__ in ("swigvarlink", "PyCObject") or
         value is type or type(value).__name__[0] == "Q"):
         return value
     elif inspect.isfunction(value) or inspect.ismethod(value):
         return init_record(FunctionRecord(), value, parent_record, name)
-    elif inspect.isclass(value) and issubclass(value, BaseException):
-        # TODO: maybe exceptions should also be recorded as class instances
-        # instead of being specially treated? they have attributes etc and
-        # right now args is manually handled in the next isinstance
-        parent_record[name] = {'value_type': 'exception_class',
-                               'class_name': value.__name__}
-        return value
     elif isinstance(value, BaseException):
         parent_record[name] = {'value_type': 'exception', 'args': value.args,
-                               'kwargs': {}}
-        record_factory('exception_class', value.__class__,
-                       parent_record[name])
+                               'kwargs': {},
+                               'exception_class': value.__class__.__name__}
         return value
     elif inspect.isclass(value) and issubclass(value, object):
         if hasattr(value, '__subject__'):
