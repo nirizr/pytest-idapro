@@ -151,10 +151,12 @@ class RecordJSONEncoder(json.JSONEncoder):
             return repr(o)
 
 
-def record_callstack(callstacks):
-    assert callstacks == inspect.stack()[2:]
+def record_callstack():
+    if len(inspect.stack()) <= 2:
+        return []
+
     callstack_records = []
-    for callstack in callstacks:
+    for callstack in inspect.stack()[2:]:
         callstack_record = {'caller_file': callstack[1],
                             'caller_line': callstack[2],
                             'caller_function': callstack[3]}
@@ -242,8 +244,7 @@ def record_factory(name, value, parent_record):
                     init_desc['name'] = cls.__subject_name__
                 else:
                     init_desc['name'] = cls.__name__
-                caller = inspect.stack()[1:]
-                init_desc['callstack'] = record_callstack(caller)
+                init_desc['callstack'] = record_callstack()
                 r.__records__['instance_desc'] = init_desc
 
                 if 'call_count' not in parent_record[name]:
@@ -307,9 +308,7 @@ class AbstractRecord(object):
                      'callback': {}}
 
         # You'd imagine this is always true, right? well.. not in IDA ;)
-        if len(inspect.stack()) > 1:
-            caller = inspect.stack()[1:]
-            call_desc['callstack'] = record_callstack(caller)
+        call_desc['callstack'] = record_callstack()
 
         if 'call_data' not in self.__records__:
             self.__records__['call_data'] = []
