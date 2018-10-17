@@ -17,7 +17,8 @@ def safe_print(*args):
 
 
 def is_idamodule(fullname):
-    if fullname in ('idaapi', 'idc', 'idautils'):
+    if fullname in ('idaapi', 'idc', 'idautils','idaapi.py', 'idc.py',
+                    'idautils.py'):
         return True
     return fullname.startswith("ida_")
 
