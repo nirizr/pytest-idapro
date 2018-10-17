@@ -26,7 +26,6 @@ def init_replay(replay, object_name, records):
 
 # TODO: only have one copy of this
 oga = object.__getattribute__
-osa = object.__setattr__
 
 
 try:
@@ -221,7 +220,7 @@ class AbstractReplay(object):
 
     def __setattr__(self, attr, val):
         if attr == '__object_name__' or attr == '__records__':
-            osa(self, attr, val)
+            object.__setattr__(self, attr, val)
         else:
             self.__records__[attr] = {'raw_data': val,
                                       'value_type': 'override'}

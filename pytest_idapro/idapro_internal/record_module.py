@@ -10,6 +10,22 @@ def logger():
     return logging.getLogger('pytest_idapro.internal.record')
 
 
+def dump_records(records_file):
+    # use our speciallized json enocoder to dump all collected records to json
+    with open(records_file, 'wb') as fh:
+        json.dump(g_records, fh, cls=RecordJSONEncoder)
+
+
+def setup():
+    # define the g_records global variable and set it to an empty dict
+    global g_records
+    g_records = {}
+
+    # install a module loader to inject a record module wrapper instead of IDA
+    # modules
+    sys.meta_path.insert(0, RecordModuleLoader())
+
+
 def is_idamodule(fullname):
     if fullname in ('idaapi', 'idc', 'idautils','idaapi.py', 'idc.py',
                     'idautils.py'):
@@ -52,9 +68,6 @@ class RecordModuleLoader(object):
         return record
 
 
-g_records = {}
-
-
 base_types = (int, str, dict, list, tuple, set)
 try:
     base_types += (unicode, long, types.NoneType)
@@ -94,31 +107,24 @@ def call_prepare_records(o, pr):
     return o
 
 
-# TODO: only have one copy of this
-# cleanup can be done only on replay's side. only reason to cleanup here
-# is to hide "private info" (addresses?..) or safe a few bytes.
-oga = object.__getattribute__
-osa = object.__setattr__
-
-
-def clean_arg(arg):
+def serialize_record(arg):
     if (hasattr(arg, '__instance_records__') and
         arg.__instance_records__ and
         arg.__instance_records__.__records__):
         r = arg.__instance_records__.__records__['instance_desc']
-        args = map(clean_arg, r.get('args', []))
-        kwargs = {k: clean_arg(v) for k, v in r.get('kwargs', {}).items()}
+        args = map(serialize_record, r.get('args', []))
+        kwargs = {k: serialize_record(v)
+                  for k, v in r.get('kwargs', {}).items()}
         return str(r.get('name', '')) + ";" + str(args) + ";" + str(kwargs)
-
-    if isinstance(arg, int_types) or arg is None:
+    elif isinstance(arg, int_types) or arg is None:
         return arg
-    if isinstance(arg, str_types):
+    elif isinstance(arg, str_types):
         return str(arg)
 
     return repr(arg)
 
 
-class JSONEncoder(json.JSONEncoder):
+class RecordJSONEncoder(json.JSONEncoder):
     def default(self, o):
         # TODO: this can probably be simplified and merged with clean_arg
         # to attempt base class, then __instance_records__ and then default
@@ -126,7 +132,7 @@ class JSONEncoder(json.JSONEncoder):
         if (hasattr(o, '__instance_records__') and
             o.__instance_records__ and
             o.__instance_records__.__records__):
-            return clean_arg(o)
+            return serialize_record(o)
         if hasattr(o, '__subject__'):
             cls = o.__class__
             if cls.__name__ == 'RecordClass':
@@ -139,7 +145,7 @@ class JSONEncoder(json.JSONEncoder):
               inspect.isfunction(o)):
             return repr(o)
         try:
-            return super(JSONEncoder, self).default(o)
+            return super(RecordJSONEncoder, self).default(o)
         except TypeError:
             logger().warn("Unsupported serializion of %s", o)
             return repr(o)
@@ -190,6 +196,9 @@ def init_record(record, subject, records, name, data_type=None):
         record.__records__ = {'value_type': record.__value_type__}
         records[name] = record.__records__
     return record
+
+
+oga = object.__getattribute__
 
 
 def record_factory(name, value, parent_record):
@@ -333,7 +342,7 @@ class AbstractRecord(object):
     def __setattr__(self, attr, value):
         if attr in ('__subject__', '__records__', '__subject_name__',
                     '__value_type__'):
-            osa(self, attr, value)
+            object.__setattr__(self, attr, value)
         else:
             setattr(self.__subject__, attr, value)
 
@@ -451,13 +460,3 @@ class InstanceRecord(AbstractRecord):
 
 class OldInstanceRecord(AbstractRecord):
     __value_type__ = 'oldinstance'
-
-
-def dump_records(records_file):
-    global g_records
-    with open(records_file, 'wb') as fh:
-        json.dump(g_records, fh, cls=JSONEncoder)
-
-
-def setup():
-    sys.meta_path.insert(0, RecordModuleLoader())
