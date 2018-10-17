@@ -157,23 +157,16 @@ def record_callstack():
 
     callstack_records = []
     for callstack in inspect.stack()[2:]:
-        callstack_record = {'caller_file': callstack[1],
-                            'caller_line': callstack[2],
-                            'caller_function': callstack[3]}
-        if callstack[4]:
-            callstack_record['caller_text'] = callstack[4][0].strip()
-        if callstack_record['caller_function'].startswith('pytest_'):
+        if callstack[3].startswith('pytest_'):
             break
-        if is_idamodule(os.path.basename(callstack_record['caller_file'])):
-            continue
-        if '/_pytest/' in callstack_record['caller_file']:
-            continue
-        if '/pytestqt/' in callstack_record['caller_file']:
-            continue
-        if '/pytest_idapro/' in callstack_record['caller_file']:
-            continue
-
-        callstack_records.append(callstack_record)
+        if not (is_idamodule(os.path.basename(callstack[1])) or
+                '/_pytest/' in callstack[1] or
+                '/pytestqt/' in callstack[1] or
+                '/pytest_idapro/' in callstack[1]):
+            callstack_records.append({'caller_file': callstack[1],
+                                      'caller_line': callstack[2],
+                                      'caller_function': callstack[3],
+                                      'caller_text': callstack[4]})
     return callstack_records
 
 

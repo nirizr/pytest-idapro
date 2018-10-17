@@ -82,14 +82,9 @@ def clean_callstack(callstack):
     for cs in callstack:
         if cs[3].startswith('pytest_'):
             break
-        if '/_pytest/' in cs[1]:
-            continue
-        if '/pytestqt/' in cs[1]:
-            continue
-        if '/pytest_idapro/' in cs[1]:
-            continue
-
-        filtered_callstack.append(cs)
+        if not ('/_pytest/' in cs[1] or '/pytestqt/' in cs[1] or
+                '/pytest_idapro/' in cs[1]):
+            filtered_callstack.append(cs)
     return filtered_callstack
 
 
