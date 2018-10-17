@@ -3,17 +3,11 @@ import sys
 import types
 import inspect
 import json
-
-_orig_stdout = sys.stdout
-_orig_stderr = sys.stderr
+import logging
 
 
-# override print to remove dependencies
-# because stdout/err are replaced with IDA's, using it will cause an inifinite
-# recursion :)
-def safe_print(*args):
-    _orig_stdout.write(str(args) + "\n")
-    _orig_stdout.flush()
+def logger():
+    return logging.getLogger('pytest_idapro.internal.record')
 
 
 def is_idamodule(fullname):
@@ -96,8 +90,7 @@ def call_prepare_records(o, pr):
     elif isinstance(o, base_types):
         return o
 
-    safe_print("WARN: default call_prepare_records", type(o), o,
-               type(o).__name__, hasattr(o, '__subject__'))
+    logger().warn("default call_prepare_records for %s", o)
     return o
 
 
@@ -148,8 +141,7 @@ class JSONEncoder(json.JSONEncoder):
         try:
             return super(JSONEncoder, self).default(o)
         except TypeError:
-            safe_print("WARN: Unsupported serialize", type(o), o,
-                       type(o).__name__)
+            logger().warn("Unsupported serializion of %s", o)
             return repr(o)
 
 
@@ -291,7 +283,7 @@ def record_factory(name, value, parent_record):
             parent_record[name] = {'value_type': 'value', 'raw_data': value}
         return value
 
-    safe_print("WARN: record_factory failed", value, name, type(value))
+    logger().warn("record_factory failed for %s", value)
     value = init_record(AbstractRecord(), value, parent_record, name)
     return value
 

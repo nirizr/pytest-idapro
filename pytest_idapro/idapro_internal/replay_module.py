@@ -1,9 +1,15 @@
 import os
 import inspect
+import logging
+
 try:
     import exceptions
 except ImportError:
     import builtins as exceptions
+
+
+def logger():
+    return logging.getLogger('pytest_idapro.internal.replay')
 
 
 def module_replay(module_name, module_record):
@@ -68,12 +74,7 @@ def score_callstack(local_callstack, instance_callstack):
 
 
 def instance_score(instance, name, args, kwargs, callstack, call_index):
-    print("Local", args, kwargs, name, call_index, callstack[0][1:])
     instance_desc = instance['instance_desc']
-    print("Verses", instance_desc['args'], instance_desc['kwargs'],
-          instance_desc['name'], instance_desc['call_index'],
-          instance_desc['callstack'])
-
     s = 0
     s += 100 if str(name) != str(instance_desc['name']) else 0
     s += sum(10 for a, b in zip(args, instance_desc['args'])
@@ -84,8 +85,6 @@ def instance_score(instance, name, args, kwargs, callstack, call_index):
     s += 5 * abs(call_index - instance_desc['call_index'])
 
     s += score_callstack(callstack, instance_desc['callstack'])
-
-    print("Scored", s)
 
     return s, instance
 
@@ -125,25 +124,30 @@ def instance_select(replay_cls, data_type, name, args, kwargs):
     instances = sorted(map(instance_score_wrap, instances))
 
     if len(instances) == 0:
-        raise Exception("Failed matching", args, kwargs)
+        raise Exception("Failed matching", replay_cls)
 
     select_desc = instances[0][1]['instance_desc']
-    print("name", name, select_desc['name'])
-    print("args", args, select_desc['args'])
-    print("kwargs", kwargs, select_desc['kwargs'])
-    print("index", call_index, select_desc['call_index'])
+    logger().info("Match instance score '%d'", instances[0][0])
+    logger().info("Match instance name '%s' : '%s'", name, select_desc['name'])
+    logger().info("Match instance args '%s' : '%s'", args, select_desc['args'])
+    logger().info("Match instance kwargs '%s' : '%s'", kwargs,
+                  select_desc['kwargs'])
+    logger().info("Match instance index '%s' : '%s'", call_index,
+                  select_desc['call_index'])
     for a, b in zip(local_callstack, select_desc['callstack']):
-        print("callstack", a[1], b['caller_file'], a[3], b['caller_function'],
-              a[2], b['caller_line'])
+      logger().info("Match instance callstack file '%s' : '%s'", a[1],
+                    b['caller_file'])
+      logger().info("Match instance callstack function '%s' : '%s'", a[3],
+                    b['caller_function'])
+      logger().info("Match instance callstack line '%s' : '%s'", a[2],
+                    b['caller_line'])
 
-    # TODO: ideally this should be included but it fails for some tests when
-    # I'm guessting multiple instances are identical. Should validate and see
-    # if we can remove duplicates somewhere, preferably in the recording code
-    # if instances[0][0] != 0:
-    #     raise Exception("Non zero score")
-    # zero_instances = [i[1] for i in instances if i[0] == instances[0][0]]
-    # if len(set(map(str, zero_instances))) > 1:
-    #     raise Exception("More than one best score", zero_instances)
+    if instances[0][0] != 0:
+        logger().warn("Non zero score of %d", instances[0][0])
+    zero_instances = [i[1] for i in instances if i[0] == instances[0][0]]
+    if len(set(map(str, zero_instances))) > 1:
+        logger().warn("More than one (%d) best scores",
+                      len(set(map(str, zero_instances))))
 
     return instances[0][1]
 
@@ -241,7 +245,7 @@ class FunctionReplay(AbstractReplay):
                 # TODO: improve logic over just picking the first available
                 callback_data = callbacks['call_data'][0]
                 callback_args = callback_data['instance_desc']
-                print("calling {} with {}".format(arg, callback_args))
+                logger().info("calling %s with %s", arg, callback_args)
                 arg(*callback_args['args'], **callback_args['kwargs'])
                 # TODO: validate return value is correct
 
