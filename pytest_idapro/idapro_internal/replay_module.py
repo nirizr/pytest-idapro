@@ -1,4 +1,3 @@
-import os
 import inspect
 import logging
 import re
@@ -118,12 +117,12 @@ def instance_select(replay_cls, data_type, name, args, kwargs):
     logger().info("Match instance index '%s' : '%s'", call_index,
                   select_desc['call_index'])
     for a, b in zip(local_callstack, select_desc['callstack']):
-      logger().info("Match instance callstack file '%s' : '%s'", a[1],
-                    b['caller_file'])
-      logger().info("Match instance callstack function '%s' : '%s'", a[3],
-                    b['caller_function'])
-      logger().info("Match instance callstack line '%s' : '%s'", a[2],
-                    b['caller_line'])
+        logger().info("Match instance callstack file '%s' : '%s'", a[1],
+                      b['caller_file'])
+        logger().info("Match instance callstack function '%s' : '%s'", a[3],
+                      b['caller_function'])
+        logger().info("Match instance callstack line '%s' : '%s'", a[2],
+                      b['caller_line'])
 
     if instances[0][0] != 0:
         logger().warn("Non zero score of %d", instances[0][0])

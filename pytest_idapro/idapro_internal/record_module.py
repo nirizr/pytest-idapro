@@ -27,7 +27,7 @@ def setup():
 
 
 def is_idamodule(fullname):
-    if fullname in ('idaapi', 'idc', 'idautils','idaapi.py', 'idc.py',
+    if fullname in ('idaapi', 'idc', 'idautils', 'idaapi.py', 'idc.py',
                     'idautils.py'):
         return True
     return fullname.startswith("ida_")
