@@ -58,15 +58,6 @@ def clean_arg(arg):
     return re.sub(' at 0x[0-9a-fA-F]{1,16}>', '>', arg)
 
 
-def score_callstack(local_callstack, instance_callstack):
-    s = 0
-    for a, b in zip(local_callstack, instance_callstack):
-        s += abs(a[2] - b['caller_line'])
-        s += 100 if str(a[1]) != str(b['caller_file']) else 0
-        s += 100 if str(a[3]) != str(b['caller_function']) else 0
-    return s
-
-
 def instance_score(instance, name, args, kwargs, callstack, call_index):
     instance_desc = instance['instance_desc']
     s = 0
@@ -78,7 +69,10 @@ def instance_score(instance, name, args, kwargs, callstack, call_index):
              if a[0] != b[0] or a[1] != clean_arg(b[1]))
     s += 5 * abs(call_index - instance_desc['call_index'])
 
-    s += score_callstack(callstack, instance_desc['callstack'])
+    for a, b in zip(callstack, instance_desc['callstack']):
+        s += abs(a[2] - b['caller_line'])
+        s += 100 if str(a[1]) != str(b['caller_file']) else 0
+        s += 100 if str(a[3]) != str(b['caller_function']) else 0
 
     return s, instance
 
