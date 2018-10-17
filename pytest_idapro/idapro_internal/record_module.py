@@ -140,19 +140,10 @@ class JSONEncoder(json.JSONEncoder):
                 return cls.__subject_name__ + ";" + repr(o)
             else:
                 return cls.__name__ + ";" + repr(o)
-        elif isinstance(o, type):
-            return repr(o)
-        elif isinstance(o, types.InstanceType):
-            return repr(o)
-        elif inspect.isbuiltin(o):
-            return repr(o)
-        elif isinstance(o, types.ModuleType):
-            return repr(o)
-        elif isinstance(o, types.InstanceType):
-            return repr(o)
-        elif inspect.isclass(o):
-            return repr(o)
-        elif inspect.isfunction(o):
+        elif (isinstance(o, type) or isinstance(o, types.InstanceType) or
+              inspect.isbuiltin(o) or isinstance(o, types.ModuleType) or
+              isinstance(o, types.InstanceType) or inspect.isclass(o) or
+              inspect.isfunction(o)):
             return repr(o)
         try:
             return super(JSONEncoder, self).default(o)
@@ -210,11 +201,9 @@ def init_record(record, subject, records, name, data_type=None):
 
 
 def record_factory(name, value, parent_record):
-    if (isinstance(value, AbstractRecord) or
-        inspect.isbuiltin(value) or
+    if (isinstance(value, AbstractRecord) or inspect.isbuiltin(value) or
         type(value).__name__ in ("swigvarlink", "PyCObject") or
-        value is type or
-        type(value).__name__[0] == "Q"):
+        value is type or type(value).__name__[0] == "Q"):
         return value
     elif inspect.isfunction(value) or inspect.ismethod(value):
         return init_record(FunctionRecord(), value, parent_record, name)
@@ -226,7 +215,8 @@ def record_factory(name, value, parent_record):
                                'class_name': value.__name__}
         return value
     elif isinstance(value, BaseException):
-        parent_record[name] = {'value_type': 'exception', 'args': value.args}
+        parent_record[name] = {'value_type': 'exception', 'args': value.args,
+                               'kwargs': {}}
         record_factory('exception_class', value.__class__,
                        parent_record[name])
         return value

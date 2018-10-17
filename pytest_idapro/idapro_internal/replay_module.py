@@ -171,7 +171,7 @@ def replay_factory(name, records):
     elif value_type == 'exception':
         # TODO: make sure there's a msg in here
         cls = replay_factory('exception_class', record)
-        return cls(*record['args'])
+        return cls(*record['args'], **record['kwargs'])
     elif value_type == 'exception_class':
         if not hasattr(exceptions, record['class_name']):
             return Exception
