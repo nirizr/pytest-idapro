@@ -70,6 +70,8 @@ def instance_score(instance, name, args, kwargs, callstack, call_index):
 
     for a, b in zip(callstack, instance_desc['callstack']):
         s += abs(a[2] - b['caller_line'])
+        # TODO: sanitaize file names. Tests and code will run from different
+        # locations, different file paths, etc. Those should match
         s += 100 if str(a[1]) != str(b['caller_file']) else 0
         s += 100 if str(a[3]) != str(b['caller_function']) else 0
 
@@ -82,7 +84,7 @@ def clean_callstack(callstack):
         if cs[3].startswith('pytest_'):
             break
         if not ('/_pytest/' in cs[1] or '/pytestqt/' in cs[1] or
-                '/pytest_idapro/' in cs[1]):
+                '/pytest_idapro/' in cs[1] or '/python2.7/' in cs[1]):
             filtered_callstack.append(cs)
     return filtered_callstack
 
