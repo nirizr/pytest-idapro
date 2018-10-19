@@ -4,6 +4,7 @@ import types
 import inspect
 import json
 import logging
+import re
 
 
 def logger():
@@ -107,21 +108,21 @@ def call_prepare_records(o, pr):
     return o
 
 
-def serialize_record(arg):
-    if (hasattr(arg, '__instance_records__') and
-        arg.__instance_records__ and
-        arg.__instance_records__.__records__):
-        r = arg.__instance_records__.__records__['instance_desc']
+def serialize_record(o):
+    if (hasattr(o, '__instance_records__') and
+        o.__instance_records__ and
+        o.__instance_records__.__records__):
+        r = o.__instance_records__.__records__['instance_desc']
         args = map(serialize_record, r.get('args', []))
         kwargs = {k: serialize_record(v)
                   for k, v in r.get('kwargs', {}).items()}
         return str(r.get('name', '')) + ";" + str(args) + ";" + str(kwargs)
-    elif isinstance(arg, int_types) or arg is None:
-        return arg
-    elif isinstance(arg, str_types):
-        return str(arg)
+    elif isinstance(o, int_types) or o is None:
+        return o
+    elif isinstance(o, str_types):
+        return str(o)
 
-    return repr(arg)
+    return repr(o)
 
 
 class RecordJSONEncoder(json.JSONEncoder):
@@ -132,23 +133,26 @@ class RecordJSONEncoder(json.JSONEncoder):
         if (hasattr(o, '__instance_records__') and
             o.__instance_records__ and
             o.__instance_records__.__records__):
-            return serialize_record(o)
-        if hasattr(o, '__subject__'):
+            o = serialize_record(o)
+        elif hasattr(o, '__subject__'):
             cls = o.__class__
             if cls.__name__ == 'RecordClass':
-                return cls.__subject_name__ + ";" + repr(o)
+                o = cls.__subject_name__ + ";" + repr(o)
             else:
-                return cls.__name__ + ";" + repr(o)
+                o = cls.__name__ + ";" + repr(o)
         elif (isinstance(o, type) or isinstance(o, types.InstanceType) or
               inspect.isbuiltin(o) or isinstance(o, types.ModuleType) or
               isinstance(o, types.InstanceType) or inspect.isclass(o) or
               inspect.isfunction(o)):
-            return repr(o)
-        try:
-            return super(RecordJSONEncoder, self).default(o)
-        except TypeError:
-            logger().warn("Unsupported serializion of %s", o)
-            return repr(o)
+            o = repr(o)
+        else:
+            try:
+                return super(RecordJSONEncoder, self).default(o)
+            except TypeError:
+                logger().warn("Unsupported serializion of %s", o)
+                o = repr(o)
+
+        return re.sub(' at 0x[0-9a-fA-F]{1,16}>', '>', o)
 
 
 def record_callstack():

@@ -36,25 +36,25 @@ except NameError:
     int_types = (int,)
 
 
-def clean_arg(arg):
+def clean_arg(o):
     """Cleanup argument's representation for comparison by removing the
     terminating memory address"""
-    if isinstance(arg, AbstractReplay):
-        r = arg.__records__['instance_desc']
+    if isinstance(o, AbstractReplay):
+        r = o.__records__['instance_desc']
         args = map(clean_arg, r['args'])
         kwargs = {k: clean_arg(v) for k, v in r['kwargs']}
         name = r['name']
         return name + ";" + str(args) + ";" + str(kwargs)
 
-    if isinstance(arg, int_types) or arg is None:
-        return arg
+    if isinstance(o, int_types) or o is None:
+        return o
 
-    if isinstance(arg, str_types):
-        arg = str(arg)
+    if isinstance(o, str_types):
+        o = str(o)
     else:
-        arg = repr(arg)
+        o = repr(o)
 
-    return re.sub(' at 0x[0-9a-fA-F]{1,16}>', '>', arg)
+    return re.sub(' at 0x[0-9a-fA-F]{1,16}>', '>', o)
 
 
 def instance_score(instance, name, args, kwargs, callstack, call_index):
