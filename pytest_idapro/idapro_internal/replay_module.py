@@ -8,13 +8,18 @@ except ImportError:
     import builtins as exceptions
 
 
+# A global regex matching base paths to be stripped, it'll be assigned by
+# setup
+g_paths_re = None
+
+
 def logger():
     return logging.getLogger('pytest_idapro.internal.replay')
 
 
 def setup(base_paths):
     global g_paths_re
-    g_paths_re = '^({})'.format("|".join(base_paths))
+    g_paths_re = re.compile('^({})'.format("|".join(base_paths)))
 
 
 def module_replay(module_name, module_record):
@@ -66,12 +71,10 @@ def instance_score(instance, name, args, kwargs, callstack, call_index):
     instance_desc = instance['instance_desc']
     s = 0
     s += 100 if str(name) != str(instance_desc['name']) else 0
-    # TODO: Do we need clean_arg on b?
-    s += sum(10 for a, b in zip(args, instance_desc['args'])
-             if a != clean_arg(b))
+    s += sum(10 for a, b in zip(args, instance_desc['args']) if a != b)
     s += sum(10 for a, b in zip(kwargs.items(),
                                 instance_desc['kwargs'].items())
-             if a[0] != b[0] or a[1] != clean_arg(b[1]))
+             if a[0] != b[0] or a[1] != b[1])
     s += 5 * abs(call_index - instance_desc['call_index'])
 
     for a, b in zip(callstack, instance_desc['callstack']):
@@ -90,7 +93,7 @@ def clean_callstack(callstack):
         if not ('/_pytest/' in cs[1] or '/pytestqt/' in cs[1] or
                 '/pytest_idapro/' in cs[1] or '/python2.7/' in cs[1]):
             # strip base paths from file names
-            fn = re.sub(g_paths_re, '', cs[1])
+            fn = g_paths_re.sub('', cs[1])
             filtered_callstack.append((fn, cs[2], cs[3]))
     return filtered_callstack
 

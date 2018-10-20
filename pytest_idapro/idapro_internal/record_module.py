@@ -7,6 +7,14 @@ import logging
 import re
 
 
+# A global variable holding all collected recordings
+g_records = {}
+
+# A global regex matching base paths to be stripped, it'll be assigned by
+# setup
+g_paths_re = None
+
+
 def logger():
     return logging.getLogger('pytest_idapro.internal.record')
 
@@ -14,7 +22,7 @@ def logger():
 def dump_records(records_file):
     # use our speciallized json enocoder to dump all collected records to json
     records = json.dumps(g_records, cls=RecordJSONEncoder)
-    records = re.sub(g_paths_re, '', records)
+    records = g_paths_re.sub('', records)
     records = re.sub(' at 0x[0-9a-fA-F]{1,16}>', '>', records)
 
     with open(records_file, 'wb') as fh:
@@ -22,13 +30,10 @@ def dump_records(records_file):
 
 
 def setup(base_paths):
-    global g_records, g_paths_re
-
-    # define the g_records global variable and set it to an empty dict
-    g_records = {}
+    global g_paths_re
 
     # define the global paths regex
-    g_paths_re = '({})'.format("|".join(base_paths))
+    g_paths_re = re.compile('({})'.format("|".join(base_paths)))
 
     # install a module loader to inject a record module wrapper instead of IDA
     # modules
@@ -135,14 +140,10 @@ def serialize_record(o):
 
 class RecordJSONEncoder(json.JSONEncoder):
     def default(self, o):
-        # TODO: this can probably be simplified and merged with clean_arg
-        # to attempt base class, then __instance_records__ and then default
-        # to repr
         if (hasattr(o, '__instance_records__') and
             o.__instance_records__ and
             o.__instance_records__.__records__):
             return serialize_record(o)
-        # TODO: This does not apprear to be needed, can i remove the __subject__case?
         elif hasattr(o, '__subject__'):
             cls = o.__class__
             if cls.__name__ == 'RecordClass':
