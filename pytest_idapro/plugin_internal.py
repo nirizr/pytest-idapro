@@ -16,7 +16,9 @@ class InternalDeferredPlugin(object):
     def __init__(self, config):
         self.ida_path = config.getoption('--ida')
         self.ida_file = config.getoption('--ida-file')
+        self.record_file = config.getoption('--ida-record')
         self.keep_ida_running = config.getoption('--ida-keep')
+
         self.config = config
         self.session = None
         self.listener = Listener()
@@ -29,24 +31,41 @@ class InternalDeferredPlugin(object):
         internal_script = os.path.join(os.path.dirname(__file__),
                                        "main_idaworker.py")
 
-        script_args = '{}'.format(self.listener.address)
-        args = [
-            self.ida_path,
-            # autonomous mode. IDA will not display dialog boxes.
-            # Designed to be used together with -S switch.
-            "-A",
-            "-S\"{}\" {}".format(internal_script, script_args),
-            "-L{}".format(self.logfile.name),
-            # Load user-provided or start with an empty database
-            self.ida_file if self.ida_file else "-t"
-        ]
-        log.debug("worker execution arguments: %s", args)
-        self.proc = subprocess.Popen(args=args)
+        idapro_internal_dir = os.path.join(os.path.dirname(__file__),
+                                           "idapro_internal")
+        record_module_template = os.path.join(idapro_internal_dir,
+                                              "init.py.tmpl")
+        ida_python_init = os.path.join(os.path.dirname(self.ida_path),
+                                       "python", "init.py")
 
-        # accept a single connection
-        self.conn = self.listener.accept()
-        self.listener.close()
-        self.listener = None
+        try:
+            if self.record_file:
+                self.install_record_module(idapro_internal_dir,
+                                           record_module_template,
+                                           ida_python_init)
+
+            script_args = '{}'.format(self.listener.address)
+            args = [
+                self.ida_path,
+                # autonomous mode. IDA will not display dialog boxes.
+                # Designed to be used together with -S switch.
+                "-A",
+                "-S\"{}\" {}".format(internal_script, script_args),
+                "-L{}".format(self.logfile.name),
+                # Load user-provided or start with an empty database
+                self.ida_file if self.ida_file else "-t"
+            ]
+            log.debug("worker execution arguments: %s", args)
+            self.proc = subprocess.Popen(args=args)
+
+            # accept a single connection
+            self.conn = self.listener.accept()
+            self.listener.close()
+            self.listener = None
+        finally:
+            if self.record_file:
+                self.uninstall_record_module(record_module_template,
+                                             ida_python_init)
 
     def ida_finish(self, interrupted):
         self.stop = True
@@ -70,6 +89,37 @@ class InternalDeferredPlugin(object):
 
         log.info("Stopping...")
         self.proc.kill()
+
+    def install_record_module(self, idapro_internal_dir,
+                              record_module_template, ida_python_init):
+        log.info("Installing record module")
+
+        base_paths = {os.path.dirname(self.ida_path)}
+        root_dir = self.config.rootdir.strpath
+        for p in self.config.getoption('file_or_dir'):
+            base_paths.add(os.path.abspath(os.path.join(root_dir, p)) + "/")
+        template_params = {'idapro_internal_dir': idapro_internal_dir,
+                           'base_paths': base_paths}
+
+        with open(record_module_template, 'r') as fh:
+            lines = [line.format(**template_params)
+                     for line in fh.readlines()]
+        with open(ida_python_init, 'r') as fh:
+            lines += fh.readlines()
+        with open(ida_python_init, 'w') as fh:
+            fh.writelines(lines)
+
+    @staticmethod
+    def uninstall_record_module(record_module_template, ida_python_init):
+        log.info("Uninstalling record module")
+        with open(record_module_template, 'r') as fh:
+            lastline = fh.readlines()[-1]
+        lines = []
+        with open(ida_python_init, 'r') as fh:
+            for line in fh.readlines():
+                lines = [] if line == lastline else (lines + [line])
+        with open(ida_python_init, 'w') as fh:
+            fh.writelines(lines)
 
     def command_ping(self):
         self.send('ping')
@@ -106,6 +156,8 @@ class InternalDeferredPlugin(object):
         option_dict["plugins"].append("no:idapro")
         del option_dict['ida']
         del option_dict['ida_file']
+        del option_dict['ida_record']
+        del option_dict['ida_replay']
 
         if platform.system() == "Windows":
             # remove capturing, this doesn't properly work in windows
@@ -182,6 +234,10 @@ class InternalDeferredPlugin(object):
     def command_quit(self):
         self.send('quit', not self.keep_ida_running)
         self.recv('quitting')
+
+    def command_save_records(self):
+        self.send('save_records', self.record_file)
+        self.recv('save_records', 'done')
 
     def send(self, *s):
         log.debug("Sending: %s", s)
@@ -261,8 +317,13 @@ class InternalDeferredPlugin(object):
             self.command_report_terminalsummary()
 
             self.recv('cmdline_main', 'finish')
+
+            if self.record_file:
+                self.command_save_records()
+
             self.command_quit()
         except Exception:
+            log.exception("Caught exception during main test loop")
             self.ida_finish(True)
             raise
 

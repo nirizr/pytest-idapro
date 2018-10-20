@@ -38,7 +38,7 @@ class BasePlugin(object):
     def pytest_generate_tests(self, metafunc):
         if 'idapro_plugin_entry' in metafunc.fixturenames:
             metafunc.parametrize('idapro_plugin_entry',
-                                 self.idapro_plugin_entries)
+                                 sorted(self.idapro_plugin_entries))
         if 'idapro_action_entry' in metafunc.fixturenames:
             metafunc.parametrize('idapro_action_entry',
-                                 self.idapro_action_entries)
+                                 sorted(self.idapro_action_entries))

@@ -33,6 +33,7 @@ class WorkerPlugin(BasePlugin):
         self.worker.send('collection', 'deselected', items)
 
     def pytest_collection_finish(self, session):
+        session.items.sort(key=lambda i: i.nodeid)
         items = [i.nodeid for i in session.items]
         self.worker.send('collection', 'finish', items)
 

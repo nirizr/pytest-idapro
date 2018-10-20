@@ -140,3 +140,15 @@ class IdaWorker(object):
         self.stop = True
         self.quit_ida = quit_ida
         return ("quitting",)
+
+    @staticmethod
+    def command_save_records(dest_file):
+        # we have to fetch record_module manually because of how it was loaded
+        # from ida's python/init.py
+        import sys
+        if 'record_module' not in sys.modules:
+            return ('save_records', 'failed')
+        record_module = sys.modules['record_module']
+
+        record_module.dump_records(dest_file)
+        return ('save_records', 'done')
