@@ -12,6 +12,11 @@ def logger():
     return logging.getLogger('pytest_idapro.internal.replay')
 
 
+def setup(base_paths):
+    global g_paths_re
+    g_paths_re = '^({})'.format("|".join(base_paths))
+
+
 def module_replay(module_name, module_record):
     return init_replay(ModuleReplay(), module_name, module_record)
 
@@ -61,6 +66,7 @@ def instance_score(instance, name, args, kwargs, callstack, call_index):
     instance_desc = instance['instance_desc']
     s = 0
     s += 100 if str(name) != str(instance_desc['name']) else 0
+    # TODO: Do we need clean_arg on b?
     s += sum(10 for a, b in zip(args, instance_desc['args'])
              if a != clean_arg(b))
     s += sum(10 for a, b in zip(kwargs.items(),
@@ -69,11 +75,9 @@ def instance_score(instance, name, args, kwargs, callstack, call_index):
     s += 5 * abs(call_index - instance_desc['call_index'])
 
     for a, b in zip(callstack, instance_desc['callstack']):
-        s += abs(a[2] - b['caller_line'])
-        # TODO: sanitaize file names. Tests and code will run from different
-        # locations, different file paths, etc. Those should match
-        s += 100 if str(a[1]) != str(b['caller_file']) else 0
-        s += 100 if str(a[3]) != str(b['caller_function']) else 0
+        s += abs(a[1] - b['caller_line'])
+        s += 100 if str(a[0]) != str(b['caller_file']) else 0
+        s += 100 if str(a[2]) != str(b['caller_function']) else 0
 
     return s, instance
 
@@ -85,7 +89,9 @@ def clean_callstack(callstack):
             break
         if not ('/_pytest/' in cs[1] or '/pytestqt/' in cs[1] or
                 '/pytest_idapro/' in cs[1] or '/python2.7/' in cs[1]):
-            filtered_callstack.append(cs)
+            # strip base paths from file names
+            fn = re.sub(g_paths_re, '', cs[1])
+            filtered_callstack.append((fn, cs[2], cs[3]))
     return filtered_callstack
 
 
@@ -119,11 +125,11 @@ def instance_select(replay_cls, data_type, name, args, kwargs):
     logger().info("Match instance index '%s' : '%s'", call_index,
                   select_desc['call_index'])
     for a, b in zip(local_callstack, select_desc['callstack']):
-        logger().info("Match instance callstack file '%s' : '%s'", a[1],
+        logger().info("Match instance callstack file '%s' : '%s'", a[0],
                       b['caller_file'])
-        logger().info("Match instance callstack function '%s' : '%s'", a[3],
+        logger().info("Match instance callstack function '%s' : '%s'", a[2],
                       b['caller_function'])
-        logger().info("Match instance callstack line '%s' : '%s'", a[2],
+        logger().info("Match instance callstack line '%s' : '%s'", a[1],
                       b['caller_line'])
 
     if instances[0][0] != 0:

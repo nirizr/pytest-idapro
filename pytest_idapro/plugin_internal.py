@@ -38,11 +38,12 @@ class InternalDeferredPlugin(object):
         ida_python_init = os.path.join(os.path.dirname(self.ida_path),
                                        "python", "init.py")
 
-        if self.record_file:
-            self.install_record_module(idapro_internal_dir,
-                                       record_module_template, ida_python_init)
-
         try:
+            if self.record_file:
+                self.install_record_module(idapro_internal_dir,
+                                           record_module_template,
+                                           ida_python_init)
+
             script_args = '{}'.format(self.listener.address)
             args = [
                 self.ida_path,
@@ -89,11 +90,19 @@ class InternalDeferredPlugin(object):
         log.info("Stopping...")
         self.proc.kill()
 
-    @staticmethod
-    def install_record_module(idapro_internal_dir, record_module_template,
-                              ida_python_init):
+    def install_record_module(self, idapro_internal_dir,
+                              record_module_template, ida_python_init):
+        log.info("Installing record module")
+
+        base_paths = {os.path.dirname(self.ida_path)}
+        root_dir = self.config.rootdir.strpath
+        for p in self.config.getoption('file_or_dir'):
+            base_paths.add(os.path.abspath(os.path.join(root_dir, p)) + "/")
+        template_params = {'idapro_internal_dir': idapro_internal_dir,
+                           'base_paths': base_paths}
+
         with open(record_module_template, 'r') as fh:
-            lines = [line.format(idapro_internal_dir=idapro_internal_dir)
+            lines = [line.format(**template_params)
                      for line in fh.readlines()]
         with open(ida_python_init, 'r') as fh:
             lines += fh.readlines()
@@ -102,6 +111,7 @@ class InternalDeferredPlugin(object):
 
     @staticmethod
     def uninstall_record_module(record_module_template, ida_python_init):
+        log.info("Uninstalling record module")
         with open(record_module_template, 'r') as fh:
             lastline = fh.readlines()[-1]
         lines = []
@@ -313,6 +323,7 @@ class InternalDeferredPlugin(object):
 
             self.command_quit()
         except Exception:
+            log.exception("Caught exception during main test loop")
             self.ida_finish(True)
             raise
 

@@ -13,14 +13,22 @@ def logger():
 
 def dump_records(records_file):
     # use our speciallized json enocoder to dump all collected records to json
+    records = json.dumps(g_records, cls=RecordJSONEncoder)
+    records = re.sub(g_paths_re, '', records)
+    records = re.sub(' at 0x[0-9a-fA-F]{1,16}>', '>', records)
+
     with open(records_file, 'wb') as fh:
-        json.dump(g_records, fh, cls=RecordJSONEncoder)
+        fh.write(records)
 
 
-def setup():
+def setup(base_paths):
+    global g_records, g_paths_re
+
     # define the g_records global variable and set it to an empty dict
-    global g_records
     g_records = {}
+
+    # define the global paths regex
+    g_paths_re = '({})'.format("|".join(base_paths))
 
     # install a module loader to inject a record module wrapper instead of IDA
     # modules
@@ -133,26 +141,25 @@ class RecordJSONEncoder(json.JSONEncoder):
         if (hasattr(o, '__instance_records__') and
             o.__instance_records__ and
             o.__instance_records__.__records__):
-            o = serialize_record(o)
+            return serialize_record(o)
+        # TODO: This does not apprear to be needed, can i remove the __subject__case?
         elif hasattr(o, '__subject__'):
             cls = o.__class__
             if cls.__name__ == 'RecordClass':
-                o = cls.__subject_name__ + ";" + repr(o)
+                return cls.__subject_name__ + ";" + repr(o)
             else:
-                o = cls.__name__ + ";" + repr(o)
+                return cls.__name__ + ";" + repr(o)
         elif (isinstance(o, type) or isinstance(o, types.InstanceType) or
               inspect.isbuiltin(o) or isinstance(o, types.ModuleType) or
               isinstance(o, types.InstanceType) or inspect.isclass(o) or
               inspect.isfunction(o)):
-            o = repr(o)
-        else:
-            try:
-                return super(RecordJSONEncoder, self).default(o)
-            except TypeError:
-                logger().warn("Unsupported serializion of %s", o)
-                o = repr(o)
+            return repr(o)
 
-        return re.sub(' at 0x[0-9a-fA-F]{1,16}>', '>', o)
+        try:
+            return super(RecordJSONEncoder, self).default(o)
+        except TypeError:
+            logger().warn("Unsupported serializion of %s", o)
+            return repr(o)
 
 
 def record_callstack():

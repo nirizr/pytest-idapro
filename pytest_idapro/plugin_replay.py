@@ -1,3 +1,4 @@
+import os
 import json
 
 from .idapro_internal import replay_module
@@ -18,6 +19,12 @@ class ReplayDeferredPlugin(MockDeferredPlugin):
 
         with open(self.replay_file, 'rb') as fh:
             self.records = json.load(fh)
+
+        base_paths = set()
+        root_dir = self.config.rootdir.strpath
+        for p in self.config.getoption('file_or_dir'):
+            base_paths.add(os.path.abspath(os.path.join(root_dir, p)) + "/")
+        replay_module.setup(base_paths)
 
     def get_module(self, module_name):
         module_name = module_aliases.get(module_name, module_name)
