@@ -114,7 +114,7 @@ def instance_select(replay_cls, data_type, name, args, kwargs):
         return instance_score(instance, name, args, kwargs, local_callstack,
                               call_index)
 
-    instances = sorted(map(instance_score_wrap, instances))
+    instances = sorted(map(instance_score_wrap, instances), key=lambda x: x[0])
 
     if len(instances) == 0:
         raise Exception("Failed matching", replay_cls)
@@ -136,11 +136,11 @@ def instance_select(replay_cls, data_type, name, args, kwargs):
                       b['caller_line'])
 
     if instances[0][0] != 0:
-        logger().warn("Non zero score of %d", instances[0][0])
+        logger().warning("Non zero score of %d", instances[0][0])
     zero_instances = [i[1] for i in instances if i[0] == instances[0][0]]
     if len(set(map(str, zero_instances))) > 1:
-        logger().warn("More than one (%d) best scores",
-                      len(set(map(str, zero_instances))))
+        logger().warning("More than one (%d) best scores",
+                         len(set(map(str, zero_instances))))
 
     return instances[0][1]
 
@@ -189,12 +189,15 @@ class AbstractReplay(object):
         try:
             return oga(self, attr)
         except AttributeError:
-            pass
+            if attr in records:
+                return replay_factory(attr, records)
 
-        if attr not in records:
-            raise ValueError("Missing attribute", attr, object_name, records)
-
-        return replay_factory(attr, records)
+            # If attribute is neither in object nor records, reraise exception
+            # from object but log a warning. This, though, could also be an
+            # hasattr call which is expected to not have the attribute
+            logger().warning("Missing attribute '%s' in '%s'", attr,
+                             object_name)
+            raise
 
 
 class ModuleReplay(AbstractReplay):
