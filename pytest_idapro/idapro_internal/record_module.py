@@ -44,7 +44,11 @@ def is_idamodule(fullname):
     if fullname in ('idaapi', 'idc', 'idautils', 'idaapi.py', 'idc.py',
                     'idautils.py'):
         return True
-    return fullname.startswith("ida_")
+    if fullname.startswith("ida_"):
+        return True
+    if fullname.startswith("idc_"):  # idc_bc back compatibility modules
+        return True
+    return False
 
 
 class RecordModuleLoader(object):
@@ -75,6 +79,10 @@ class RecordModuleLoader(object):
         self.loading.add(fullname)
         real_module = __import__(fullname, None, None, "*")
         self.loading.remove(fullname)
+
+        # redirect idc_bc modules to reside with idc
+        if fullname.startswith("idc_"):
+            fullname = "idc"
 
         record = record_factory(fullname, real_module, g_records)
         sys.modules[fullname] = record
