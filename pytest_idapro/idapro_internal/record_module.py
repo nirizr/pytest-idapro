@@ -10,6 +10,10 @@ import re
 # A global variable holding all collected recordings
 g_records = {}
 
+# A global variable holding all proxied classes by name, to prevent defining
+# the same class more than once
+g_classes = {}
+
 # A global regex matching base paths to be stripped, it'll be assigned by
 # setup
 g_paths_re = None
@@ -189,10 +193,6 @@ def record_callstack():
 
 
 def init_record(record, subject, records, name, data_type=None):
-    if hasattr(record, '__subject__') and record.__subject__ != subject:
-        raise Exception("Trying to override subject", record.__subject__,
-                        subject, name, record)
-
     record.__subject__ = subject
     record.__subject_name__ = name
 
@@ -245,10 +245,9 @@ def record_factory(name, value, parent_record):
                                'exception_class': value.__class__.__name__}
         return value
     elif inspect.isclass(value) and issubclass(value, object):
-        if hasattr(value, '__subject__'):
-            value = value.__subject__
-        if not is_idamodule(value.__module__):
-            return value
+        if name in g_classes:
+            logger().info("Returning existing class %s", name)
+            return g_classes[name]
 
         class RecordClass(value):
             __value_type__ = 'class'
@@ -290,9 +289,6 @@ def record_factory(name, value, parent_record):
                             '__value_type__', '__instance_records__'):
                     return oga(self, attr)
 
-                if attr == "__class__":
-                    return oga(self, '__class__')
-
                 try:
                     r = super(RecordClass, self).__getattribute__(attr)
                 except AttributeError:
@@ -302,6 +298,8 @@ def record_factory(name, value, parent_record):
                                    self.__instance_records__.__records__)
                 return r
 
+        if name != '__class__':
+            g_classes[name] = RecordClass
         return init_record(RecordClass, value, parent_record, name)
     elif isinstance(value, types.ModuleType):
         if is_idamodule(value.__name__):
