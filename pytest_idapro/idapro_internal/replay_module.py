@@ -162,6 +162,9 @@ def replay_factory(name, records):
 
                 return init_replay(o, name, instance)
 
+            def __init__(self, *args, **kwargs):
+                # swallow all arguments passed down to replayed classes
+                super(ClassReplay, self).__init__()
         return init_replay(ClassReplay, name, record)
     elif value_type == 'function':
         return init_replay(FunctionReplay(), name, record)
