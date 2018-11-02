@@ -125,7 +125,7 @@ def call_prepare_records(o, pr):
         # registered by us
         # TODO: this is unlikely but we will currently miss callbacks that
         # are recorded objects
-        return record_factory(o.__name__, o, pr['callback'])
+        return record_factory(o.__name__, o, pr['callback'], force=True)
     elif isinstance(o, base_types):
         return o
 
@@ -234,8 +234,8 @@ def ignore_object(obj):
     return False
 
 
-def record_factory(name, value, parent_record):
-    if ignore_object(value):
+def record_factory(name, value, parent_record, force=False):
+    if not force and ignore_object(value):
         return value
     elif inspect.isfunction(value) or inspect.ismethod(value):
         return init_record(FunctionRecord(), value, parent_record, name)
