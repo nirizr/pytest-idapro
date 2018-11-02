@@ -52,7 +52,7 @@ def clean_arg(o):
     if isinstance(o, AbstractReplay):
         r = o.__records__['instance_desc']
         args = map(clean_arg, r['args'])
-        kwargs = {k: clean_arg(v) for k, v in r['kwargs']}
+        kwargs = {k: clean_arg(v) for k, v in r['kwargs'].items()}
         name = r['name']
         return name + ";" + str(args) + ";" + str(kwargs)
 
