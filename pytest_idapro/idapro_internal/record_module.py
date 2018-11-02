@@ -206,11 +206,28 @@ def init_record(record, subject, records, name, data_type=None):
 oga = object.__getattribute__
 
 
+def ignore_object(obj):
+    if isinstance(obj, AbstractRecord):
+        return True
+    if inspect.isbuiltin(obj):
+        return True
+    if inspect.isclass(obj) and issubclass(obj, BaseException):
+        return True
+    if type(obj).__name__ in ("swigvarlink", "PyCObject"):
+        return True
+    if obj is type:
+        return True
+    if type(obj).__name__[0] == "Q":
+        return True
+    if (hasattr(obj, '__module__') and
+        not is_idamodule(obj.__module__)):
+        return True
+
+    return False
+
+
 def record_factory(name, value, parent_record):
-    if (isinstance(value, AbstractRecord) or inspect.isbuiltin(value) or
-        (inspect.isclass(value) and issubclass(value, BaseException)) or
-        type(value).__name__ in ("swigvarlink", "PyCObject") or
-        value is type or type(value).__name__[0] == "Q"):
+    if ignore_object(value):
         return value
     elif inspect.isfunction(value) or inspect.ismethod(value):
         return init_record(FunctionRecord(), value, parent_record, name)
